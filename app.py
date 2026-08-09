@@ -16,7 +16,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# 🎨 다크 테마 및 드롭다운 스타일 CSS
+# 🎨 다크 테마 및 스타일 CSS
 st.markdown("""
     <style>
     .stApp { background-color: #0B0E14 !important; color: #E0E0E0 !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
@@ -46,13 +46,13 @@ st.markdown("""
         font-size: 13px !important;
     }
 
-    /* 검색 결과 드롭다운 버튼 스타일링 최적화 */
+    /* 드롭다운 추천 검색어 버튼 스타일 */
     div.stButton > button {
         width: 100% !important;
         background-color: #121824 !important;
         color: #F8FAFC !important;
         border: 1px solid #1E293B !important;
-        border-radius: 6px !important;
+        border-radius: 8px !important;
         padding: 10px 14px !important;
         text-align: left !important;
         font-size: 13px !important;
@@ -214,7 +214,7 @@ with col_search:
                 sym = item["symbol"]
                 name = item["name"]
                 ex = item["exchange"]
-                if st.button(f"📌 {sym}  |  {name}  ({ex})", key=f"btn_{sym}"):
+                if st.button(f"🔍 {sym}  |  {name}  ({ex})", key=f"btn_{sym}"):
                     st.session_state['selected_ticker'] = sym
                     st.query_params["q"] = sym
                     st.rerun()
@@ -259,11 +259,13 @@ if res:
         tf_15m_bg = "#1E293B" if current_tf == "15M" else "#121824"
         tf_15m_color = "#00E676" if current_tf == "15M" else "#94A3B8"
 
+        # f-string 충돌 방지를 위해 변수를 미리 선언하여 삽입
+        ticker_val = res['ticker']
         tf_html = f"""
         <div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 6px;">
-            <button onclick="window.parent.location.search = '?q={res['ticker']}&tf=1D'" style="background-color: {tf_1d_bg}; color: {tf_1d_color}; border: 1px solid #1E293B; border-radius: 6px; padding: 6px 10px; font-weight: 700; font-size: 12px; cursor: pointer;">1D</button>
-            <button onclick="window.parent.location.search = '?q={res['ticker']}&tf=1H'" style="background-color: {tf_1h_bg}; color: {tf_1h_color}; border: 1px solid #1E293B; border-radius: 6px; padding: 6px 10px; font-weight: 700; font-size: 12px; cursor: pointer;">1H</button>
-            <button onclick="window.parent.location.search = '?q={res['ticker']}&tf=15M'" style="background-color: {tf_15m_bg}; color: {tf_15m_color}; border: 1px solid #1E293B; border-radius: 6px; padding: 6px 10px; font-weight: 700; font-size: 12px; cursor: pointer;">15M</button>
+            <button onclick="window.parent.location.search = '?q={ticker_val}&tf=1D'" style="background-color: {tf_1d_bg}; color: {tf_1d_color}; border: 1px solid #1E293B; border-radius: 6px; padding: 6px 10px; font-weight: 700; font-size: 12px; cursor: pointer;">1D</button>
+            <button onclick="window.parent.location.search = '?q={ticker_val}&tf=1H'" style="background-color: {tf_1h_bg}; color: {tf_1h_color}; border: 1px solid #1E293B; border-radius: 6px; padding: 6px 10px; font-weight: 700; font-size: 12px; cursor: pointer;">1H</button>
+            <button onclick="window.parent.location.search = '?q={ticker_val}&tf=15M'" style="background-color: {tf_15m_bg}; color: {tf_15m_color}; border: 1px solid #1E293B; border-radius: 6px; padding: 6px 10px; font-weight: 700; font-size: 12px; cursor: pointer;">15M</button>
         </div>
         """
         components.html(tf_html, height=45)
