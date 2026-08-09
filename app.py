@@ -109,7 +109,6 @@ class QuantEngine:
                 us_exchanges = {"NMS", "NYQ", "NGM", "ASE", "PCX", "OBB", "PNK"}
                 
                 for q in quotes:
-                    # 주식(EQUITY) 타입이면서 미국 거래소에 속하는 항목만 필터링
                     q_type = q.get('quoteType', '')
                     ex = q.get('exchange', '')
                     symbol = q.get('symbol', '')
@@ -164,6 +163,7 @@ class QuantEngine:
 
     @staticmethod
     def get_earnings_date(ticker_symbol: str) -> str:
+        # 실제 API에서 가져온 정확한 일정만 허용 (오류 방지를 위해 가짜 날짜 생성 로직 제거)
         try:
             url = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker_symbol}?modules=calendarEvents"
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -175,27 +175,16 @@ class QuantEngine:
                     ts = earnings_list[0].get('raw')
                     if ts:
                         dt = datetime.fromtimestamp(ts, tz=timezone.utc).astimezone(timezone(timedelta(hours=9)))
-                        return dt.strftime("%m월 %d일 실적 발표 예정")
+                        now_kst = datetime.now(timezone(timedelta(hours=9)))
+                        diff_days = (dt.date() - now_kst.date()).days
+                        if -5 <= diff_days <= 30: # 한 달 내외로 임박한 실적만 표기
+                            if diff_days >= 0:
+                                return dt.strftime("%m월 %d일 실적 발표 예정")
+                            else:
+                                return dt.strftime("%m월 %d일 실적 발표됨")
         except:
             pass
-
-        forced_earnings = {
-            "ASTS": "2026-08-10",
-            "TSLA": "2026-10-21",
-            "AAPL": "2026-10-29",
-            "NVDA": "2026-08-26",
-            "AMZN": "2026-10-29",
-            "MSFT": "2026-10-28",
-            "GOOGL": "2026-10-27"
-        }
-        
-        if ticker_symbol in forced_earnings:
-            dt = datetime.strptime(forced_earnings[ticker_symbol], "%Y-%m-%d")
-            return dt.strftime("%m월 %d일 실적 발표 예정")
-
-        now_kst = datetime.now(timezone(timedelta(hours=9)))
-        default_dt = now_kst + timedelta(days=1)
-        return default_dt.strftime("%m월 %d일 실적 발표 예정")
+        return None
 
     @staticmethod
     def get_google_news(ticker_symbol: str):
