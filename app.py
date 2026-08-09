@@ -20,29 +20,33 @@ st.set_page_config(
     layout="wide"
 )
 
-# 🎨 다크 테마 및 입력창 스타일 CSS 커스텀 (검색창 빨간 테두리 원천 차단)
+# 🎨 다크 테마 및 입력창 스타일 CSS 커스텀 (빨간 테두리 원천 차단)
 st.markdown("""
     <style>
     .stApp { background-color: #0B0E14 !important; color: #E0E0E0 !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     
-    /* 검색창 외부 컨테이너 및 내부 빨간 테두리 강제 제거 */
+    /* Streamlit 위젯 포커스 시 생기는 기본 빨간 테두리/링을 초록색으로 강제 전환 */
+    :focus {
+        border-color: #00E676 !important;
+        box-shadow: 0 0 0 1px #00E676 !important;
+    }
+
+    /* 검색창 컨테이너 및 내부 요소 스타일 강제 지정 */
     div[data-testid="stSearchbox"], 
     div[data-testid="stSearchbox"] > div,
     div[data-testid="stSearchbox"] div[data-baseweb="input"],
     div[data-testid="stSearchbox"] input {
         background-color: #121824 !important;
-        border-color: #1E293B !important;
-        box-shadow: none !important;
+        color: #F8FAFC !important;
     }
 
-    /* 검색창 감싸는 메인 박스 디자인 */
+    /* 검색창 메인 박스 테두리 */
     div[data-testid="stSearchbox"] > div {
         border: 1px solid #1E293B !important;
         border-radius: 10px !important;
-        color: #F8FAFC !important;
     }
     
-    /* 포커스 시 빨간 테두리 대신 초록색(토스 포인트) 테두리 적용 */
+    /* 검색창 포커스 시 테두리 */
     div[data-testid="stSearchbox"] > div:focus-within,
     div[data-testid="stSearchbox"] div[data-baseweb="input"]:focus-within {
         border: 1px solid #00E676 !important;
@@ -349,6 +353,21 @@ with col_search:
         QuantEngine.search_stock_suggestions,
         placeholder="티커 검색 (예: asts)...",
         key="stock_autocomplete_search",
+        style_overrides={
+            "control": {
+                "backgroundColor": "#121824",
+                "borderColor": "#1E293B",
+                "boxShadow": "none",
+            },
+            "menu": {
+                "backgroundColor": "#121824",
+                "borderColor": "#1E293B",
+            },
+            "option": {
+                "backgroundColor": "#121824",
+                "color": "#E0E0E0",
+            }
+        }
     )
 
     if selected_ticker_result and selected_ticker_result != st.session_state['selected_ticker']:
