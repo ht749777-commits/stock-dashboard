@@ -12,33 +12,42 @@ import numpy as np
 import yfinance as yf
 import matplotlib.pyplot as plt
 from streamlit_searchbox import st_searchbox
+from PIL import Image
 
-# 페이지 설정 (반응형 와이드 레이아웃)
+# 1. 이미지 로드 (같은 폴더에 위치해야 함)
+try:
+    logo_img = Image.open("taurusfinal.jpg")
+except Exception:
+    logo_img = "📊"  # 이미지 로드 실패 시 기본 이모지로 대체
+
+# 페이지 설정 (브라우저 탭 아이콘에 이미지 적용)
 st.set_page_config(
-    page_title="QuantPulse",
-    page_icon="⚡",
+    page_title="Toss-Style Quant Dashboard",
+    page_icon=logo_img,
     layout="wide"
 )
 
-# 🎨 다크 테마 및 스타일 CSS 커스텀
+# 🎨 토스증권 감성의 깔끔한 다크 테마 및 컴포넌트 CSS 커스텀
 st.markdown("""
     <style>
     .stApp { background-color: #0B0E14 !important; color: #E0E0E0 !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     
     .dashboard-header {
         background-color: #121824;
-        padding: 14px 18px;
-        border-radius: 10px;
+        padding: 12px 20px;
+        border-radius: 12px;
         border: 1px solid #1E293B;
-        margin-bottom: 15px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
     }
 
     div[data-testid="stMetric"] {
         background-color: #121824 !important;
         border: 1px solid #1E293B !important;
-        padding: 14px !important;
-        border-radius: 10px !important;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        padding: 16px !important;
+        border-radius: 12px !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         min-height: 95px !important;
         display: flex;
         flex-direction: column;
@@ -46,42 +55,39 @@ st.markdown("""
     }
     div[data-testid="stMetric"] label {
         color: #94A3B8 !important;
-        font-weight: 600 !important;
-        font-size: 11px !important;
+        font-weight: 500 !important;
+        font-size: 12px !important;
     }
     div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
         color: #F8FAFC !important;
-        font-weight: 800 !important;
-        font-size: 17px !important;
+        font-weight: 700 !important;
+        font-size: 18px !important;
     }
 
     .news-card { 
         background-color: #121824 !important; 
-        padding: 12px 16px; 
-        border-radius: 8px; 
+        padding: 16px; 
+        border-radius: 12px; 
         border: 1px solid #1E293B; 
-        margin-bottom: 8px; 
+        margin-bottom: 12px; 
     }
 
     .stButton > button {
         background-color: #121824 !important;
-        color: #F8FAFC !important;
+        color: #3182CE !important;
         border: 1px solid #1E293B !important;
-        border-radius: 8px !important;
-        padding: 10px 14px !important;
-        text-align: left !important;
-        font-size: 13px !important;
         font-weight: 600 !important;
+        border-radius: 8px !important;
     }
     .stButton > button:hover {
         background-color: #1E293B !important;
-        border-color: #00E676 !important;
-        color: #00E676 !important;
+        border-color: #3182CE !important;
+        color: #FFFFFF !important;
     }
     
-    .stTabs [data-baseweb="tab-list"] { gap: 6px; background-color: transparent; }
-    .stTabs [data-baseweb="tab"] { background-color: #121824; border-radius: 6px; color: #94A3B8; border: 1px solid #1E293B; padding: 6px 12px; font-size: 13px; }
-    .stTabs [aria-selected="true"] { background-color: #1E293B !important; color: #00E676 !important; font-weight: bold; }
+    .stTabs [data-baseweb="tab-list"] { gap: 8px; background-color: transparent; }
+    .stTabs [data-baseweb="tab"] { background-color: #121824; border-radius: 8px; color: #94A3B8; border: 1px solid #1E293B; padding: 8px 16px; font-size: 13px; }
+    .stTabs [aria-selected="true"] { background-color: #1E293B !important; color: #3182CE !important; font-weight: bold; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -99,24 +105,19 @@ class QuantEngine:
             return []
         term = search_term.strip().upper()
         try:
-            url = f"https://query2.finance.yahoo.com/v1/finance/search?q={urllib.parse.quote(term)}&quotesCount=20&newsCount=0"
+            url = f"https://query2.finance.yahoo.com/v1/finance/search?q={urllib.parse.quote(term)}&quotesCount=10&newsCount=0"
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
             with urllib.request.urlopen(req, timeout=2) as response:
                 data = json.loads(response.read().decode('utf-8'))
                 quotes = data.get('quotes', [])
 
                 suggestions = []
-                us_exchanges = {"NMS", "NYQ", "NGM", "ASE", "PCX", "OBB", "PNK"}
-                
                 for q in quotes:
-                    q_type = q.get('quoteType', '')
-                    ex = q.get('exchange', '')
                     symbol = q.get('symbol', '')
-                    
-                    if q_type == 'EQUITY' and (ex in us_exchanges or '.' not in symbol):
-                        name = q.get('shortname', q.get('longname', symbol))
-                        display_text = f"{symbol}  |  {name} ({ex})"
-                        suggestions.append((display_text, symbol))
+                    ex = q.get('exchange', '')
+                    name = q.get('shortname', q.get('longname', symbol))
+                    display_text = f"{symbol}  |  {name} ({ex})"
+                    suggestions.append((display_text, symbol))
                 return suggestions
         except:
             return []
@@ -178,8 +179,7 @@ class QuantEngine:
                 
                 title = QuantEngine.professional_translate(entry.get('title', 'No Title'))
                 summary = QuantEngine.professional_translate(entry.get('summary', '') or entry.get('description', ''))
-                summary = re.sub(r'<[^>]*>', '', summary)
-                news_list.append((title, summary[:120] + "...", QuantEngine.convert_to_kst_string(pub_parsed), entry.get('link', '#')))
+                news_list.append((title, summary, QuantEngine.convert_to_kst_string(pub_parsed), entry.get('link', '#')))
                 if len(news_list) >= 4: break
         except:
             pass
@@ -202,8 +202,7 @@ class QuantEngine:
 
                 title = QuantEngine.professional_translate(entry.get('title', 'Social Discussion'))
                 summary = QuantEngine.professional_translate(entry.get('summary', '') or entry.get('description', ''))
-                summary = re.sub(r'<[^>]*>', '', summary)
-                social_list.append((title, summary[:120] + "...", QuantEngine.convert_to_kst_string(pub_parsed), entry.get('link', '#')))
+                social_list.append((title, summary, QuantEngine.convert_to_kst_string(pub_parsed), entry.get('link', '#')))
                 if len(social_list) >= 4: break
         except:
             pass
@@ -303,46 +302,26 @@ if "q" in query_params:
 if "tf" in query_params:
     st.session_state['timeframe'] = query_params["tf"].upper()
 
-# ── [우측 상단 팝오버 메뉴 영역] ──
-_, col_popover = st.columns([10, 1])
-with col_popover:
-    with st.popover("⚙️ 메뉴"):
-        st.markdown("**QuantPulse 메뉴**")
-        if st.button("홈 대시보드", use_container_width=True):
-            pass
-        if st.button("관심종목 (Watchlist)", use_container_width=True):
-            pass
-
-# ── [화면 중앙 로고/배너 영역 (OP.GG 스타일)] ──
-col_b1, col_b2, col_b3 = st.columns([1, 4, 1])
-with col_b2:
-    st.markdown("""
-        <div style="
-            background: linear-gradient(135deg, #121824 0%, #1E293B 100%);
-            border: 2px solid #00E676;
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-            box-shadow: 0 8px 16px rgba(0, 230, 118, 0.15);
-            margin-bottom: 20px;
-        ">
-            <h1 style="color: #00E676; margin: 0; font-size: 32px; font-weight: 900; letter-spacing: 2px;">⚡ QUANT PULSE</h1>
-            <p style="color: #94A3B8; margin: 5px 0 0 0; font-size: 13px; font-weight: 600;">Professional Stock Quant & Market Intelligence Platform</p>
+# 2. 대시보드 상단 로고 및 헤더 영역 정렬
+header_col1, header_col2 = st.columns([0.08, 0.92])
+with header_col1:
+    if isinstance(logo_img, Image.Image):
+        st.image(logo_img, width=48)
+    else:
+        st.write("📊")
+with header_col2:
+    st.markdown(f"""
+        <div style="padding-top: 5px;">
+            <span style="color: #FF5500; font-weight: 800; font-size: 18px;">TAURUS LAB Quant Dashboard</span>
+            <span style="color: #94A3B8; font-size: 12px; margin-left: 10px;">미국 증시 실시간 분석 | 나스닥 선물: {QuantEngine.get_nasdaq_futures()}</span>
         </div>
     """, unsafe_allow_html=True)
 
-st.markdown(f"""
-    <div class="dashboard-header">
-        <span style="color: #00E676; font-weight: 900; font-size: 16px;">📊 Market Overview</span>
-        <span style="color: #94A3B8; font-size: 12px; margin-left: 10px;">나스닥 선물: {QuantEngine.get_nasdaq_futures()}</span>
-    </div>
-""", unsafe_allow_html=True)
-
-col_search, _ = st.columns([2.0, 3.0])
+col_search, col_dummy = st.columns([2.0, 3.0])
 with col_search:
     selected_ticker_result = st_searchbox(
         QuantEngine.search_stock_suggestions,
-        placeholder="예: AAPL, TSLA, AMZN...",
+        placeholder="미국 주식 티커 또는 기업명 검색...",
         key="stock_autocomplete_search",
     )
 
@@ -354,41 +333,12 @@ with col_search:
 res = QuantEngine.fetch_market_data(st.session_state['selected_ticker'], st.session_state['timeframe'])
 
 if res:
-    col_title, col_btn = st.columns([3.0, 1.0])
-    with col_title:
-        st.markdown(f"<h3 style='color: #F8FAFC; margin-bottom: 5px;'>[{res['ticker']}] {res['company_name']}</h3>", unsafe_allow_html=True)
-    with col_btn:
-        st.markdown("""
-            <div style="display: flex; justify-content: flex-end; align-items: center; height: 100%; padding-top: 5px;">
-                <a href="https://earnings.kr/" target="_blank" style="text-decoration: none;">
-                    <span style="background-color: #1E293B; color: #38BDF8; font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 20px; border: 1px solid #334155; display: inline-flex; align-items: center; gap: 4px;">
-                        📅 실적발표캘린더
-                    </span>
-                </a>
-            </div>
-        """, unsafe_allow_html=True)
+    st.markdown(f"<h3 style='color: #F8FAFC; margin-bottom: 5px; font-weight: 700;'>{res['company_name']} <span style='color: #94A3B8; font-size: 16px;'>({res['ticker']})</span></h3>", unsafe_allow_html=True)
     
     score = res['score']
-    
-    if score >= 70:
-        box_bg = "linear-gradient(135deg, #00E676, #00C853)"
-        text_color = "#000000"
-        status_text = "🚀 STRONG BUY (매수 의견 / 안전 진입 구간)"
-        status_color = "#00E676"
-    elif score >= 40:
-        box_bg = "linear-gradient(135deg, #F59E0B, #D97706)"
-        text_color = "#000000"
-        status_text = "⚠️ HOLD (중립 관망 구간)"
-        status_color = "#F59E0B"
-    else:
-        box_bg = "linear-gradient(135deg, #EF4444, #DC2626)"
-        text_color = "#FFFFFF"
-        status_text = "⛔ STOP (매수 금지 / 위험 관리 필요)"
-        status_color = "#EF4444"
-
     st.markdown(
-        f"<div style='background: {box_bg}; color: {text_color}; font-weight: 900; font-size: 15px; text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 12px;'>"
-        f"매수적합도 : {score} / 100 점"
+        f"<div style='background: linear-gradient(135deg, #1E293B, #0F172A); border: 1px solid #334155; color: #F8FAFC; font-weight: 700; font-size: 15px; text-align: center; padding: 12px; border-radius: 10px; margin-bottom: 15px;'>"
+        f"🎯 보수적 퀀트 매수 적합도 : <span style='color: #3182CE;'>{score} / 100 점</span>"
         f"</div>",
         unsafe_allow_html=True
     )
@@ -406,7 +356,8 @@ if res:
     col8.metric("최대 낙폭", f"{res['bt_mdd']:.1f}%")
 
     st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown(f"<p style='color: {status_color}; font-weight: bold; font-size: 14px; margin-bottom: 15px;'>{status_text}</p>", unsafe_allow_html=True)
+    status_text = "🚀 STRONG BUY (안전 진입 구간 충족)" if score >= 75 else "⚠️ WAIT & DEFENSE (위험 관리 및 관망 권장)"
+    st.markdown(f"<p style='color: #3182CE; font-weight: bold; font-size: 14px; margin-bottom: 15px;'>{status_text}</p>", unsafe_allow_html=True)
 
     c_title, c_tf = st.columns([3.5, 1.5])
     with c_title:
@@ -414,11 +365,11 @@ if res:
     with c_tf:
         current_tf = st.session_state['timeframe']
         tf_1d_bg = "#1E293B" if current_tf == "1D" else "#121824"
-        tf_1d_color = "#00E676" if current_tf == "1D" else "#94A3B8"
+        tf_1d_color = "#3182CE" if current_tf == "1D" else "#94A3B8"
         tf_1h_bg = "#1E293B" if current_tf == "1H" else "#121824"
-        tf_1h_color = "#00E676" if current_tf == "1H" else "#94A3B8"
+        tf_1h_color = "#3182CE" if current_tf == "1H" else "#94A3B8"
         tf_15m_bg = "#1E293B" if current_tf == "15M" else "#121824"
-        tf_15m_color = "#00E676" if current_tf == "15M" else "#94A3B8"
+        tf_15m_color = "#3182CE" if current_tf == "15M" else "#94A3B8"
 
         tf_html = f"""
         <div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 6px;">
@@ -433,7 +384,7 @@ if res:
     ax.set_facecolor('#121824')
     
     df = res['data']
-    ax.plot(df.index, df['Close'], label='Close Price', color='#00E676', linewidth=1.5)
+    ax.plot(df.index, df['Close'], label='Close Price', color='#3182CE', linewidth=1.5)
     ax.plot(df.index, res['ema20'], label='EMA 20', color='#38BDF8', linewidth=1, linestyle='--')
     ax.plot(df.index, res['ema50'], label='EMA 50', color='#F59E0B', linewidth=1, linestyle='--')
     ax.plot(df.index, res['ema200'], label='EMA 200', color='#EC4899', linewidth=1, linestyle='--')
@@ -454,7 +405,7 @@ if res:
         for title, summary, pub, link in news:
             st.markdown(
                 f"<div class='news-card'>"
-                f"🔗 <a href='{link}' target='_blank' style='color: #00E676; font-weight: 700; text-decoration: none; font-size: 13px;'>{title}</a><br>"
+                f"🔗 <a href='{link}' target='_blank' style='color: #3182CE; font-weight: 700; text-decoration: none; font-size: 13px;'>{title}</a><br>"
                 f"<span style='color: #94A3B8; font-size: 11px;'>⏱ {pub}</span><br>"
                 f"<span style='color: #CBD5E1; font-size: 12px;'>{summary}</span>"
                 f"</div>",
@@ -466,7 +417,7 @@ if res:
         for title, summary, pub, link in gossip:
             st.markdown(
                 f"<div class='news-card'>"
-                f"💬 <a href='{link}' target='_blank' style='color: #00E676; font-weight: 700; text-decoration: none; font-size: 13px;'>{title}</a><br>"
+                f"💬 <a href='{link}' target='_blank' style='color: #38BDF8; font-weight: 700; text-decoration: none; font-size: 13px;'>{title}</a><br>"
                 f"<span style='color: #94A3B8; font-size: 11px;'>⏱ {pub}</span><br>"
                 f"<span style='color: #CBD5E1; font-size: 12px;'>{summary}</span>"
                 f"</div>",
