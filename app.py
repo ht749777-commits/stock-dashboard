@@ -86,7 +86,6 @@ div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
 .stTabs [aria-selected="true"] { background-color: #1E293B !important; color: #00E676 !important; font-weight: bold; }
 </style>""", unsafe_allow_html=True)
 
-# 🛠️ QuantEngine 클래스를 먼저 정의합니다.
 class QuantEngine:
     FINANCIAL_DICT = {
         "bullish": "강세(매수)", "bearish": "약세(매도)", "bull": "황소(강세)", "bear": "곰(약세)",
@@ -428,7 +427,7 @@ margin-bottom: 20px;
 <h1 style="color: #FF2A2A; margin: 0; font-size: 32px; font-weight: 900; letter-spacing: 2px;">TAURUS LAB</h1>
 </div>""", unsafe_allow_html=True)
 
-# ── [Market Overview 영역 (마우스 오버 시 아래 콘텐츠를 밀어내며 펼쳐지는 툴팁)] ──
+# ── [Market Overview 영역 (게임 아이템 툴팁 - 맨위로 덮어씌우기 및 공백 제거)] ──
 market_data = QuantEngine.get_market_overview_data()
 
 nq_val, nq_chg = market_data["NQ"]
@@ -456,13 +455,7 @@ market_component_html = f"""
         border-radius: 8px;
         border: 1px solid #1E293B;
         box-sizing: border-box;
-        overflow: hidden;
-        /* 평소 높이 48px, 마우스 올리면 툴팁 포함하여 175px로 늘어나며 아래 요소를 밀어냄 */
-        height: 48px;
-        transition: height 0.15s ease-in-out;
-    }}
-    .market-overview-container:hover {{
-        height: 175px;
+        overflow: visible;
     }}
     .market-bar {{
         display: flex;
@@ -521,11 +514,21 @@ market_component_html = f"""
         92% {{ top: -120px; }}
         100% {{ top: -144px; }}
     }}
-    /* 드롭다운 패널: 기본은 숨겨져 있다가 마우스 올리면 나타남 */
+    /* 게임 아이템 툴팁(Tooltip) 스타일 - 맨 위로 덮어씌우기 (z-index 극대화) */
     .dropdown-panel {{
         display: none;
-        padding: 4px 14px 12px 14px;
+        position: absolute;
+        top: 54px;
+        left: 0;
+        width: 620px;
+        background-color: rgba(13, 17, 23, 0.98);
+        border: 1px solid #334155;
+        border-radius: 6px;
+        padding: 14px 16px;
         box-sizing: border-box;
+        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.95);
+        z-index: 999999;
+        backdrop-filter: blur(6px);
     }}
     .market-overview-container:hover .dropdown-panel {{
         display: block;
@@ -533,11 +536,11 @@ market_component_html = f"""
     .grid-container {{
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 10px;
+        gap: 12px;
     }}
     .grid-item {{
-        background-color: #1A2234;
-        border: 1px solid #283548;
+        background-color: #121824;
+        border: 1px solid #1E293B;
         border-radius: 6px;
         padding: 8px 10px;
         display: flex;
@@ -569,7 +572,7 @@ market_component_html = f"""
 <body>
 <div class="market-overview-container">
     <div class="market-bar">
-        <div class="market-title-badge">📊 Market Overview <span style="font-size:11px; color:#64748B; margin-left:6px; font-weight:normal;">(마우스 올리면 상세 정보)</span></div>
+        <div class="market-title-badge">📊 Market Overview <span style="font-size:11px; color:#64748B; margin-left:6px; font-weight:normal;">(아이템 정보 보기)</span></div>
         <div class="ticker-slider-window">
             <ul class="ticker-slider-list">
                 <li class="ticker-item">나스닥 100 선물: <b style="color:#F8FAFC;">{nq_val:,.2f}</b> <span style="color:{'#00E676' if nq_chg>=0 else '#EF4444'};">({nq_chg:+.2f}%)</span></li>
@@ -578,7 +581,7 @@ market_component_html = f"""
                 <li class="ticker-item">VIX (공포 지수): <b style="color:#F8FAFC;">{vix_val:,.2f}</b> <span style="color:{'#EF4444' if vix_chg>=0 else '#00E676'};">({vix_chg:+.2f}%)</span></li>
                 <li class="ticker-item">미국 10년물 국채금리: <b style="color:#F8FAFC;">{tnx_val:.2f}%</b> <span style="color:{'#00E676' if tnx_chg>=0 else '#EF4444'};">({tnx_chg:+.2f}%)</span></li>
                 <li class="ticker-item">비트코인 (BTC): <b style="color:#F8FAFC;">${btc_val:,.0f}</b> <span style="color:{'#00E676' if btc_chg>=0 else '#EF4444'};">({btc_chg:+.2f}%)</span></li>
-                <li class="ticker-item">나스닥 100 선물: <b style="color:#F8FAFC;">{nq_val:,.2f}</b> <span style="color:{'#00E676' if tnx_chg>=0 else '#EF4444'};">({nq_chg:+.2f}%)</span></li>
+                <li class="ticker-item">나스닥 100 선물: <b style="color:#F8FAFC;">{nq_val:,.2f}</b> <span style="color:{'#00E676' if nq_chg>=0 else '#EF4444'};">({nq_chg:+.2f}%)</span></li>
             </ul>
         </div>
     </div>
@@ -596,21 +599,21 @@ market_component_html = f"""
                 <span class="label-name">S&P 500 선물</span>
                 <div class="value-box">
                     <span class="label-val">{es_val:,.2f}</span>
-                    <span class="label-chg" style="color:{'#00E676' if nq_chg>=0 else '#EF4444'};">({es_chg:+.2f}%)</span>
+                    <span class="label-chg" style="color:{'#00E676' if es_chg>=0 else '#EF4444'};">({es_chg:+.2f}%)</span>
                 </div>
             </div>
             <div class="grid-item">
                 <span class="label-name">원/달러 환율</span>
                 <div class="value-box">
                     <span class="label-val">₩{usd_val:,.2f}</span>
-                    <span class="label-chg" style="color:{'#00E676' if nq_chg>=0 else '#EF4444'};">({usd_chg:+.2f}%)</span>
+                    <span class="label-chg" style="color:{'#00E676' if usd_chg>=0 else '#EF4444'};">({usd_chg:+.2f}%)</span>
                 </div>
             </div>
             <div class="grid-item">
                 <span class="label-name">VIX (변동성 지수)</span>
                 <div class="value-box">
                     <span class="label-val">{vix_val:,.2f}</span>
-                    <span class="label-chg" style="color:{'#EF4444' if vix_chg>=0 else '#00E676'};">({vix_chg:+.2f}%)</span>
+                    <span class="label-chg" style="color:{'#EF4444' if vix_chg>=0 else '#EF4444'};">({vix_chg:+.2f}%)</span>
                 </div>
             </div>
             <div class="grid-item">
@@ -633,8 +636,8 @@ market_component_html = f"""
 </body>
 </html>
 """
-
-components.html(market_component_html, height=55, scrolling=False)
+# 🚀 components 높이를 52px로 딱 맞추어 지표와 검색탭 사이의 넓은 빈 공간(공백)을 완전히 제거
+components.html(market_component_html, height=52)
 
 col_search, _ = st.columns([2.0, 3.0])
 with col_search:
