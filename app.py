@@ -12,6 +12,10 @@ import pandas as pd
 import yfinance as yf
 import matplotlib.pyplot as plt
 from streamlit_searchbox import st_searchbox
+from streamlit_autorefresh import st_autorefresh
+
+# 1분(60,000 밀리초)마다 자동으로 페이지를 새로고침
+count = st_autorefresh(interval=60 * 1000, limit=None, key="datarefresh")
 
 # 🖼️ 로컬 이미지를 Base64 문자열로 변환하는 함수
 def get_image_base64(path):
@@ -427,7 +431,7 @@ margin-bottom: 20px;
 <h1 style="color: #FF2A2A; margin: 0; font-size: 32px; font-weight: 900; letter-spacing: 2px;">TAURUS LAB</h1>
 </div>""", unsafe_allow_html=True)
 
-# ── [Market Overview 영역 (게임 아이템 툴팁 - 3개씩 2줄 그리드 스타일)] ──
+# ── [Market Overview 영역] ──
 market_data = QuantEngine.get_market_overview_data()
 
 nq_val, nq_chg = market_data["NQ"]
@@ -512,7 +516,6 @@ market_component_html = f"""
         92% {{ top: -120px; }}
         100% {{ top: -144px; }}
     }}
-    /* 게임 아이템 툴팁(Tooltip) 스타일 - 3개씩 2줄 그리드 패널 */
     .dropdown-panel {{
         display: none;
         position: absolute;
@@ -779,5 +782,3 @@ cursor: pointer;
                 f"</div>",
                 unsafe_allow_html=True
             )
-else:
-    st.error("데이터를 불러오지 못했습니다.")
