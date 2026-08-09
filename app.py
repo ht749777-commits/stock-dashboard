@@ -162,7 +162,6 @@ class QuantEngine:
             ticker_obj = yf.Ticker(ticker_symbol)
             calendar = ticker_obj.calendar
             if calendar is not None and not calendar.empty:
-                # yfinance calendar 구조 대응 (Earnings Date 키 확인)
                 earnings_date = None
                 if 'Earnings Date' in calendar:
                     earnings_date = calendar['Earnings Date'][0]
@@ -175,11 +174,16 @@ class QuantEngine:
                     else:
                         dt = pd.to_datetime(earnings_date)
                     
-                    # UTC 기준 시간을 한국 시간(KST, UTC+9)으로 변환
                     if dt.tzinfo is None:
                         dt = dt.tz_localize('UTC')
                     dt_kst = dt.tz_convert(timezone(timedelta(hours=9)))
-                    return dt_kst.strftime("%m월 %d일 실적 발표 예정")
+                    
+                    # 현재 한국 시간 기준 비교 (-5일 ~ +2일 범위 체크)
+                    now_kst = datetime.now(timezone(timedelta(hours=9)))
+                    diff_days = (dt_kst.date() - now_kst.date()).days
+                    
+                    if -5 <= diff_days <= 2:
+                        return dt_kst.strftime("%m월 %d일실적 발표 예정") if diff_days >= 0 else dt_kst.strftime("%m월 %d일 실적 발표됨")
         except:
             pass
         return None
@@ -349,7 +353,7 @@ with col_search:
 res = QuantEngine.fetch_market_data(st.session_state['selected_ticker'], st.session_state['timeframe'])
 
 if res:
-    # 📢 실적 발표일 가져오기 (한국 시간 기준 변환)
+    # 📢 실적 발표일 필터링 (D-5 ~ D+2 범위일 때만 뱃지 표시)
     earnings_str = QuantEngine.get_earnings_date(res['ticker'])
     earnings_badge = f"<span style='background-color: #1E293B; color: #38BDF8; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; border: 1px solid #334155; margin-left: 12px;'>📢 {earnings_str}</span>" if earnings_str else ""
 
@@ -357,7 +361,6 @@ if res:
     
     score = res['score']
     
-    # 🎨 매수적합도 점수에 따른 동적 색상 및 상태 메시지 설정
     if score >= 70:
         box_bg = "linear-gradient(135deg, #00E676, #00C853)"
         text_color = "#000000"
