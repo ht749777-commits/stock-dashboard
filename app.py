@@ -371,9 +371,15 @@ if res:
         st.markdown(f"<h3 style='color: #F8FAFC; margin-bottom: 5px;'>[{res['ticker']}] {res['company_name']}</h3>", unsafe_allow_html=True)
     
     with col_btn:
-        # TAURUS LAB 이미지 인코딩 (파일명: taurusfinal.png)
+        # TAURUS LAB 이미지 인코딩
         img_src = get_image_base64("taurusfinal.png")
         
+        # 이미지를 정상적으로 로드했을 때와 실패했을 때 예외 처리
+        if img_src:
+            img_html = f'<img src="{img_src}" style="width: 100%; height: 100%; object-fit: cover;">'
+        else:
+            img_html = '<span style="color: #FF5500; font-weight: bold; font-size: 10px;">TL</span>'
+
         st.markdown(f"""
             <div style="display: flex; justify-content: flex-end; align-items: center; height: 100%; padding-top: 5px;">
                 <a href="https://earnings.kr/" target="_blank" style="text-decoration: none;">
@@ -399,7 +405,7 @@ if res:
                             background-color: #000000;
                             border: 1px solid #FF5500;
                         ">
-                            <img src="{img_src}" style="width: 100%; height: 100%; object-fit: cover;">
+                            {img_html}
                         </div>
                         <!-- 텍스트 영역 -->
                         <span style="color: #F8FAFC; font-size: 13px; font-weight: 600; letter-spacing: -0.3px;">
