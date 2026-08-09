@@ -20,7 +20,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# 🎨 원본 다크 테마 및 스타일 CSS 복원
+# 🎨 다크 테마 및 스타일 CSS 커스텀
 st.markdown("""
     <style>
     .stApp { background-color: #0B0E14 !important; color: #E0E0E0 !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
@@ -309,7 +309,7 @@ col_search, col_dummy = st.columns([2.0, 3.0])
 with col_search:
     selected_ticker_result = st_searchbox(
         QuantEngine.search_stock_suggestions,
-        placeholder="예: AAPL, TSLA, ASTS...",
+        placeholder="예: AAPL, TSLA, AMZN...",
         key="stock_autocomplete_search",
     )
 
@@ -324,8 +324,26 @@ if res:
     st.markdown(f"<h3 style='color: #F8FAFC; margin-bottom: 5px;'>[{res['ticker']}] {res['company_name']}</h3>", unsafe_allow_html=True)
     
     score = res['score']
+    
+    # 🎨 매수적합도 점수에 따른 동적 색상 및 상태 메시지 설정
+    if score >= 70:
+        box_bg = "linear-gradient(135deg, #00E676, #00C853)"
+        text_color = "#000000"
+        status_text = "🚀 STRONG BUY (매수 의견 / 안전 진입 구간)"
+        status_color = "#00E676"
+    elif score >= 40:
+        box_bg = "linear-gradient(135deg, #F59E0B, #D97706)"
+        text_color = "#000000"
+        status_text = "⚠️ HOLD (중립 관망 구간)"
+        status_color = "#F59E0B"
+    else:
+        box_bg = "linear-gradient(135deg, #EF4444, #DC2626)"
+        text_color = "#FFFFFF"
+        status_text = "⛔ STOP (매수 금지 / 위험 관리 필요)"
+        status_color = "#EF4444"
+
     st.markdown(
-        f"<div style='background: linear-gradient(135deg, #F59E0B, #D97706); color: #000000; font-weight: 900; font-size: 15px; text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 12px;'>"
+        f"<div style='background: {box_bg}; color: {text_color}; font-weight: 900; font-size: 15px; text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 12px;'>"
         f"매수적합도 : {score} / 100 점"
         f"</div>",
         unsafe_allow_html=True
@@ -344,8 +362,7 @@ if res:
     col8.metric("최대 낙폭", f"{res['bt_mdd']:.1f}%")
 
     st.markdown("<br>", unsafe_allow_html=True)
-    status_text = "🚀 STRONG BUY (엄격한 기준 충족 / 안전 진입 구간)" if score >= 75 else "⚠️ WAIT & DEFENSE (위험 관리 및 관망 권장 구간)"
-    st.markdown(f"<p style='color: #00E676; font-weight: bold; font-size: 14px; margin-bottom: 15px;'>{status_text}</p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color: {status_color}; font-weight: bold; font-size: 14px; margin-bottom: 15px;'>{status_text}</p>", unsafe_allow_html=True)
 
     c_title, c_tf = st.columns([3.5, 1.5])
     with c_title:
