@@ -157,6 +157,34 @@ class QuantEngine:
             return "29,834.75 (+0.02%)"
 
     @staticmethod
+    def get_earnings_date(ticker_symbol: str) -> str:
+        try:
+            ticker_obj = yf.Ticker(ticker_symbol)
+            calendar = ticker_obj.calendar
+            if calendar is not None and not calendar.empty:
+                # yfinance calendar 구조 대응 (Earnings Date 키 확인)
+                earnings_date = None
+                if 'Earnings Date' in calendar:
+                    earnings_date = calendar['Earnings Date'][0]
+                elif hasattr(calendar, 'loc') and 'Earnings Date' in calendar.index:
+                    earnings_date = calendar.loc['Earnings Date'].iloc[0]
+                
+                if earnings_date:
+                    if isinstance(earnings_date, str):
+                        dt = datetime.fromisoformat(earnings_date.replace('Z', '+00:00'))
+                    else:
+                        dt = pd.to_datetime(earnings_date)
+                    
+                    # UTC 기준 시간을 한국 시간(KST, UTC+9)으로 변환
+                    if dt.tzinfo is None:
+                        dt = dt.tz_localize('UTC')
+                    dt_kst = dt.tz_convert(timezone(timedelta(hours=9)))
+                    return dt_kst.strftime("%m월 %d일 실적 발표 예정")
+        except:
+            pass
+        return None
+
+    @staticmethod
     def get_google_news(ticker_symbol: str):
         news_list = []
         try:
@@ -321,7 +349,11 @@ with col_search:
 res = QuantEngine.fetch_market_data(st.session_state['selected_ticker'], st.session_state['timeframe'])
 
 if res:
-    st.markdown(f"<h3 style='color: #F8FAFC; margin-bottom: 5px;'>[{res['ticker']}] {res['company_name']}</h3>", unsafe_allow_html=True)
+    # 📢 실적 발표일 가져오기 (한국 시간 기준 변환)
+    earnings_str = QuantEngine.get_earnings_date(res['ticker'])
+    earnings_badge = f"<span style='background-color: #1E293B; color: #38BDF8; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; border: 1px solid #334155; margin-left: 12px;'>📢 {earnings_str}</span>" if earnings_str else ""
+
+    st.markdown(f"<h3 style='color: #F8FAFC; margin-bottom: 5px; display: flex; align-items: center;'><span>[{res['ticker']}] {res['company_name']}</span>{earnings_badge}</h3>", unsafe_allow_html=True)
     
     score = res['score']
     
