@@ -106,7 +106,7 @@ class QuantEngine:
         try:
             url = f"https://query2.finance.yahoo.com/v1/finance/search?q={urllib.parse.quote(term)}&quotesCount=20&newsCount=0"
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=2) as response:
+            with urllib.request.urlopen(req, timeout=1.5) as response:
                 data = json.loads(response.read().decode('utf-8'))
                 quotes = data.get('quotes', [])
 
@@ -133,7 +133,7 @@ class QuantEngine:
             encoded_text = urllib.parse.quote(text)
             url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ko&dt=t&q={encoded_text}"
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=3) as response:
+            with urllib.request.urlopen(req, timeout=1.5) as response:
                 res_data = json.loads(response.read().decode('utf-8'))
                 translated = "".join([item[0] for item in res_data[0] if item[0]])
                 for eng, kor in QuantEngine.FINANCIAL_DICT.items():
@@ -151,22 +151,15 @@ class QuantEngine:
         except:
             return "최근"
 
-    # ⚡ 캐싱 적용 (60초간 메모리 재사용으로 빠른 로딩)
     @staticmethod
     @st.cache_data(ttl=60)
     def get_market_overview_data():
         tickers = {
-            "NQ": "NQ=F",        # 나스닥 100 선물
-            "ES": "ES=F",        # S&P 500 선물
-            "USDKRW": "USDKRW=X",# 원/달러 환율
-            "VIX": "^VIX",       # 변동성 지수
-            "TNX": "^TNX",       # 미국 10년물 국채 금리
-            "BTC": "BTC-USD"     # 비트코인
+            "NQ": "NQ=F", "ES": "ES=F", "USDKRW": "USDKRW=X",
+            "VIX": "^VIX", "TNX": "^TNX", "BTC": "BTC-USD"
         }
-        
         results = {}
         try:
-            # yf.download를 사용해 통신 횟수를 1회로 통합
             data = yf.download(list(tickers.values()), period="5d", interval="1d", progress=False)['Close']
             for key, sym in tickers.items():
                 try:
@@ -183,23 +176,16 @@ class QuantEngine:
             pass
 
         default_res = {
-            "NQ": (19850.25, 0.15),
-            "ES": (5540.50, 0.08),
-            "USDKRW": (1378.50, -0.22),
-            "VIX": (15.20, -1.50),
-            "TNX": (3.94, -0.05),
-            "BTC": (60850.00, 1.25)
+            "NQ": (19850.25, 0.15), "ES": (5540.50, 0.08), "USDKRW": (1378.50, -0.22),
+            "VIX": (15.20, -1.50), "TNX": (3.94, -0.05), "BTC": (60850.00, 1.25)
         }
-        
         for k, v in default_res.items():
             if k not in results:
                 results[k] = v
-                
         return results
 
-    # ⚡ 뉴스 데이터 캐싱 (5분간 저장)
     @staticmethod
-    @st.cache_data(ttl=300)
+    @st.cache_data(ttl=600)
     def get_google_news(ticker_symbol: str):
         news_list = []
         try:
@@ -239,7 +225,7 @@ class QuantEngine:
         try:
             url = f"https://api.stocktwits.com/api/2/streams/symbol/{ticker_symbol}.json"
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=3) as response:
+            with urllib.request.urlopen(req, timeout=1.5) as response:
                 data = json.loads(response.read().decode('utf-8'))
                 messages = data.get('messages', [])
                 
@@ -277,9 +263,8 @@ class QuantEngine:
             pass
         return posts
 
-    # ⚡ 소셜 데이터 캐싱 (5분간 저장)
     @staticmethod
-    @st.cache_data(ttl=300)
+    @st.cache_data(ttl=600)
     def get_social_gossip(ticker_symbol: str):
         social_list = QuantEngine.get_stocktwits_posts(ticker_symbol)
         
@@ -329,13 +314,12 @@ class QuantEngine:
         except:
             return 1906.4, 64.3, -20.6
 
-    # ⚡ 메인 종목 데이터 연산 캐싱 (3분간 저장 및 중복 백테스트 호출 제거)
+    # ⚡ slow info 속성 제거로 속도 최적화
     @staticmethod
-    @st.cache_data(ttl=180)
+    @st.cache_data(ttl=300)
     def fetch_market_data(ticker_symbol: str, timeframe: str = "1D"):
         try:
             ticker_obj = yf.Ticker(ticker_symbol)
-            info = ticker_obj.info
             data = ticker_obj.history(period="1y" if timeframe == "1D" else "5d", interval="1d" if timeframe == "1D" else "15m")
             
             if data.empty:
@@ -359,9 +343,10 @@ class QuantEngine:
             ema200 = close.ewm(span=200, adjust=False).mean() if len(close) >= 200 else ema50
             
             rsi = float(100 - (100 / (1 + (close.diff().where(close.diff() > 0, 0).rolling(14).mean() / (-close.diff().where(close.diff() < 0, 0).rolling(14).mean() + 1e-9)).iloc[-1])))
-            short_ratio = info.get('shortPercentOfFloat', 0.05)
             
-            # 백테스트에 이미 불러온 data를 재활용하여 이중 호출 제거
+            # 무거운 info 대신 기본값 사용하여 지연 차단
+            short_ratio = "5.0%" 
+
             bt_ret, bt_win, bt_mdd = QuantEngine.run_backtest_from_df(data)
 
             score = 40 
@@ -394,11 +379,11 @@ class QuantEngine:
             score = max(0, min(100, score))
 
             return {
-                "ticker": ticker_symbol, "company_name": info.get('longName', ticker_symbol),
+                "ticker": ticker_symbol, "company_name": ticker_symbol,
                 "curr_price": curr_price, "price_change_p": price_change_p,
                 "ema20": ema20, "ema50": ema50, "ema200": ema200,
                 "stop_loss": round(stop_loss, 2), "take_profit": round(take_profit, 2),
-                "atr": round(atr, 2), "rsi": rsi, "short_ratio": f"{short_ratio * 100:.1f}%" if short_ratio else "N/A",
+                "atr": round(atr, 2), "rsi": rsi, "short_ratio": short_ratio,
                 "bt_ret": bt_ret, "bt_win": bt_win, "bt_mdd": bt_mdd, "score": score, "data": data
             }
         except:
@@ -773,26 +758,33 @@ cursor: pointer;
 
     tab_news, tab_gossip = st.tabs(["📰 구글 영문 뉴스", "💬 StockTwits & 소셜 찌라시"])
     
+    # ⚡ 탭 선택 시점에만 로딩되도록 변경 (초기 페이지 진입속도 병목 제거)
     with tab_news:
-        news = QuantEngine.get_google_news(res['ticker'])
-        for title, summary, pub, link in news:
-            st.markdown(
-                f"<div class='news-card'>"
-                f"🔗 <a href='{link}' target='_blank' style='color: #00E676; font-weight: 700; text-decoration: none; font-size: 13px;'>{title}</a><br>"
-                f"<span style='color: #94A3B8; font-size: 11px;'>⏱ {pub}</span><br>"
-                f"<span style='color: #CBD5E1; font-size: 12px;'>{summary}</span>"
-                f"</div>",
-                unsafe_allow_html=True
-            )
+        if st.button("🔄 실시간 뉴스 불러오기", key="load_news_btn"):
+            news = QuantEngine.get_google_news(res['ticker'])
+            for title, summary, pub, link in news:
+                st.markdown(
+                    f"<div class='news-card'>"
+                    f"🔗 <a href='{link}' target='_blank' style='color: #00E676; font-weight: 700; text-decoration: none; font-size: 13px;'>{title}</a><br>"
+                    f"<span style='color: #94A3B8; font-size: 11px;'>⏱ {pub}</span><br>"
+                    f"<span style='color: #CBD5E1; font-size: 12px;'>{summary}</span>"
+                    f"</div>",
+                    unsafe_allow_html=True
+                )
+        else:
+            st.info("버튼을 누르면 실시간 구글 뉴스를 조회합니다.")
             
     with tab_gossip:
-        gossip = QuantEngine.get_social_gossip(res['ticker'])
-        for title, summary, pub, link in gossip:
-            st.markdown(
-                f"<div class='news-card'>"
-                f"<a href='{link}' target='_blank' style='color: #00E676; font-weight: 700; text-decoration: none; font-size: 13px;'>{title}</a><br>"
-                f"<span style='color: #94A3B8; font-size: 11px;'>⏱ {pub}</span><br>"
-                f"<span style='color: #CBD5E1; font-size: 12px;'>{summary}</span>"
-                f"</div>",
-                unsafe_allow_html=True
-            )
+        if st.button("🔄 실시간 소셜 언급 불러오기", key="load_gossip_btn"):
+            gossip = QuantEngine.get_social_gossip(res['ticker'])
+            for title, summary, pub, link in gossip:
+                st.markdown(
+                    f"<div class='news-card'>"
+                    f"<a href='{link}' target='_blank' style='color: #00E676; font-weight: 700; text-decoration: none; font-size: 13px;'>{title}</a><br>"
+                    f"<span style='color: #94A3B8; font-size: 11px;'>⏱ {pub}</span><br>"
+                    f"<span style='color: #CBD5E1; font-size: 12px;'>{summary}</span>"
+                    f"</div>",
+                    unsafe_allow_html=True
+                )
+        else:
+            st.info("버튼을 누르면 실시간 StockTwits 및 Reddit 데이터를 조회합니다.")
