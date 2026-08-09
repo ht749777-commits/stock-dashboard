@@ -25,10 +25,10 @@ def get_image_base64(path):
     except Exception:
         return ""
 
-# 페이지 설정 (파비콘 아이콘 지정: bull logo.png)
+# 페이지 설정 (파비콘 아이콘 지정: taurusfinal.png)
 st.set_page_config(
     page_title="TAURUS LAB",
-    page_icon="bull logo.png",  # 인터넷 탭에 보여질 파비콘 이미지
+    page_icon="taurusfinal.png",  # 인터넷 탭에 보여질 파비콘 이미지
     layout="wide"
 )
 
