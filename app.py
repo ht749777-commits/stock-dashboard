@@ -512,7 +512,7 @@ market_component_html = f"""
         92% {{ top: -120px; }}
         100% {{ top: -144px; }}
     }}
-    /* 게임 아이템 툴팁(Tooltip) 스타일 */
+    /* 게임 아이템 툴팁(Tooltip) 스타일 (상단 타이틀 제거) */
     .dropdown-panel {{
         display: none;
         position: absolute;
@@ -522,7 +522,7 @@ market_component_html = f"""
         background-color: rgba(13, 17, 23, 0.96);
         border: 1px solid #334155;
         border-radius: 6px;
-        padding: 14px 16px;
+        padding: 10px 16px;
         box-sizing: border-box;
         box-shadow: 0 12px 28px rgba(0, 0, 0, 0.85);
         z-index: 999;
@@ -531,20 +531,11 @@ market_component_html = f"""
     .market-overview-container:hover .dropdown-panel {{
         display: block;
     }}
-    .tooltip-header {{
-        color: #00E676;
-        font-weight: 800;
-        font-size: 13px;
-        margin-bottom: 8px;
-        border-bottom: 1px solid #1E293B;
-        padding-bottom: 6px;
-        letter-spacing: -0.2px;
-    }}
     .grid-row {{
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 4px 0;
+        padding: 5px 0;
         font-size: 12px;
     }}
     .label-name {{
@@ -575,7 +566,6 @@ market_component_html = f"""
     </div>
     
     <div class="dropdown-panel">
-        <div class="tooltip-header">⚔️ [유물] 실시간 글로벌 마켓 브리프</div>
         <div class="grid-row">
             <span class="label-name">나스닥 100 선물</span>
             <div><span class="label-val">{nq_val:,.2f}</span> <span style="color:{'#00E676' if nq_chg>=0 else '#EF4444'}; font-size:11px;">({nq_chg:+.2f}%)</span></div>
@@ -605,7 +595,7 @@ market_component_html = f"""
 </body>
 </html>
 """
-components.html(market_component_html, height=210)
+components.html(market_component_html, height=195)
 
 col_search, _ = st.columns([2.0, 3.0])
 with col_search:
