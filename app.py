@@ -12,19 +12,6 @@ import pandas as pd
 import yfinance as yf
 import matplotlib.pyplot as plt
 from streamlit_searchbox import st_searchbox
-import streamlit as st
-from streamlit_autorefresh import st_autorefresh
-
-# 1분(60,000 밀리초)마다 자동으로 페이지를 새로고침
-# key를 지정하여 세션 상태를 유지할 수 있습니다.
-count = st_autorefresh(interval=60 * 1000, limit=None, key="datarefresh")
-
-st.title("📊 실시간 주식 대시보드")
-st.write(f"자동 리프레시 카운트: {count}")
-
-# 이후 기존 데이터 로드 및 UI 렌더링 코드 작성
-# with open('stock_data.json', 'r') as f:
-#     ...
 
 # 🖼️ 로컬 이미지를 Base64 문자열로 변환하는 함수
 def get_image_base64(path):
