@@ -4,6 +4,8 @@ import urllib.request
 import urllib.parse
 import json
 import re
+import concurrent.futures
+from datetime import datetime, timezone, timedelta
 import pandas as pd
 import numpy as np
 import yfinance as yf
@@ -62,7 +64,7 @@ def fast_nasdaq_futures():
     try:
         url = "https://query1.finance.yahoo.com/v8/finance/chart/NQ=F?range=1d&interval=1m"
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=1) as response:
+        with urllib.request.urlopen(req, timeout=0.8) as response:
             data = json.loads(response.read().decode())
             meta = data['chart']['result'][0]['meta']
             curr = meta['regularMarketPrice']
@@ -80,7 +82,7 @@ def get_search_suggestions(search_term: str):
     try:
         url = f"https://query2.finance.yahoo.com/v1/finance/search?q={urllib.parse.quote(term)}&quotesCount=5&newsCount=0"
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=1) as response:
+        with urllib.request.urlopen(req, timeout=0.8) as response:
             data = json.loads(response.read().decode('utf-8'))
             quotes = data.get('quotes', [])
             suggestions = []
@@ -97,8 +99,14 @@ def get_search_suggestions(search_term: str):
 def fast_market_data(ticker_symbol: str, timeframe: str = "1D"):
     try:
         ticker_obj = yf.Ticker(ticker_symbol)
-        info = ticker_obj.info
-        data = ticker_obj.history(period="1y" if timeframe == "1D" else "5d", interval="1d" if timeframe == "1D" else "15m")
+        
+        # 병렬 처리를 통해 yfinance 내부 네트워크 요청 속도 극대화
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future_info = executor.submit(lambda: ticker_obj.info)
+            future_history = executor.submit(lambda: ticker_obj.history(period="1y" if timeframe == "1D" else "5d", interval="1d" if timeframe == "1D" else "15m"))
+            
+            info = future_info.result()
+            data = future_history.result()
         
         if data.empty: return None
 
