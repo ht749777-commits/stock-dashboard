@@ -5,6 +5,7 @@ import urllib.parse
 import json
 import re
 import time
+import base64
 from datetime import datetime, timedelta, timezone
 import feedparser
 import pandas as pd
@@ -84,6 +85,17 @@ st.markdown("""
     .stTabs [aria-selected="true"] { background-color: #1E293B !important; color: #00E676 !important; font-weight: bold; }
     </style>
 """, unsafe_allow_html=True)
+
+# 🖼️ 로컬 이미지를 Base64 문자열로 변환하는 함수
+def get_image_base64(path):
+    try:
+        with open(path, "rb") as image_file:
+            encoded = base64.b64encode(image_file.read()).decode()
+            ext = path.split('.')[-1].lower()
+            mime_type = "image/png" if ext == "png" else "image/jpeg"
+            return f"data:{mime_type};base64,{encoded}"
+    except Exception:
+        return ""
 
 class QuantEngine:
     FINANCIAL_DICT = {
@@ -357,13 +369,43 @@ if res:
     col_title, col_btn = st.columns([3.0, 1.0])
     with col_title:
         st.markdown(f"<h3 style='color: #F8FAFC; margin-bottom: 5px;'>[{res['ticker']}] {res['company_name']}</h3>", unsafe_allow_html=True)
+    
     with col_btn:
-        st.markdown("""
+        # TAURUS LAB 이미지 인코딩 (파일명: taurusfinal.png)
+        img_src = get_image_base64("taurusfinal.png")
+        
+        st.markdown(f"""
             <div style="display: flex; justify-content: flex-end; align-items: center; height: 100%; padding-top: 5px;">
                 <a href="https://earnings.kr/" target="_blank" style="text-decoration: none;">
-                    <span style="background-color: #1E293B; color: #38BDF8; font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 20px; border: 1px solid #334155; display: inline-flex; align-items: center; gap: 4px;">
-                        📅 실적발표캘린더
-                    </span>
+                    <div style="
+                        background-color: #121824; 
+                        padding: 6px 14px 6px 8px; 
+                        border-radius: 20px; 
+                        border: 1px solid #1E293B; 
+                        display: inline-flex; 
+                        align-items: center; 
+                        gap: 8px;
+                        cursor: pointer;
+                    ">
+                        <!-- TAURUS LAB 원형 로고 아이콘 -->
+                        <div style="
+                            width: 24px; 
+                            height: 24px; 
+                            border-radius: 50%; 
+                            overflow: hidden; 
+                            display: flex; 
+                            align-items: center; 
+                            justify-content: center;
+                            background-color: #000000;
+                            border: 1px solid #FF5500;
+                        ">
+                            <img src="{img_src}" style="width: 100%; height: 100%; object-fit: cover;">
+                        </div>
+                        <!-- 텍스트 영역 -->
+                        <span style="color: #F8FAFC; font-size: 13px; font-weight: 600; letter-spacing: -0.3px;">
+                            어닝시즌 <span style="color: #475569; font-weight: 300;">|</span> 쉽고 빠르게
+                        </span>
+                    </div>
                 </a>
             </div>
         """, unsafe_allow_html=True)
