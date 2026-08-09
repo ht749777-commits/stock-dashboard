@@ -16,8 +16,8 @@ from streamlit_searchbox import st_searchbox
 
 # 페이지 설정 (반응형 와이드 레이아웃)
 st.set_page_config(
-    page_title="QuantPulse",
-    page_icon="⚡",
+    page_title="TAURUS LAB",
+    page_icon="🐂",
     layout="wide"
 )
 
@@ -319,29 +319,35 @@ if "tf" in query_params:
 _, col_popover = st.columns([10, 1])
 with col_popover:
     with st.popover("⚙️ 메뉴"):
-        st.markdown("**QuantPulse 메뉴**")
+        st.markdown("**메뉴**")
         if st.button("홈 대시보드", use_container_width=True):
             pass
         if st.button("관심종목 (Watchlist)", use_container_width=True):
             pass
 
-# ── [화면 중앙 로고/배너 영역 (OP.GG 스타일)] ──
-col_b1, col_b2, col_b3 = st.columns([1, 4, 1])
+# ── [화면 중앙 메인 로고 영역 (TAURUS LAB)] ──
+col_b1, col_b2, col_b3 = st.columns([1, 2, 1])
 with col_b2:
-    st.markdown("""
-        <div style="
-            background: linear-gradient(135deg, #121824 0%, #1E293B 100%);
-            border: 2px solid #00E676;
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-            box-shadow: 0 8px 16px rgba(0, 230, 118, 0.15);
-            margin-bottom: 20px;
-        ">
-            <h1 style="color: #00E676; margin: 0; font-size: 32px; font-weight: 900; letter-spacing: 2px;">⚡ QUANT PULSE</h1>
-            <p style="color: #94A3B8; margin: 5px 0 0 0; font-size: 13px; font-weight: 600;">Professional Stock Quant & Market Intelligence Platform</p>
-        </div>
-    """, unsafe_allow_html=True)
+    main_logo = get_image_base64("taurusfinal.png")
+    if main_logo:
+        st.markdown(f"""
+            <div style="text-align: center; margin-bottom: 25px;">
+                <img src="{main_logo}" style="max-width: 320px; width: 100%; height: auto; border-radius: 12px;">
+            </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+            <div style="
+                background: linear-gradient(135deg, #121824 0%, #1E293B 100%);
+                border: 2px solid #FF5500;
+                border-radius: 12px;
+                padding: 20px;
+                text-align: center;
+                margin-bottom: 20px;
+            ">
+                <h1 style="color: #FF5500; margin: 0; font-size: 32px; font-weight: 900; letter-spacing: 2px;">TAURUS LAB</h1>
+            </div>
+        """, unsafe_allow_html=True)
 
 st.markdown(f"""
     <div class="dashboard-header">
@@ -371,10 +377,7 @@ if res:
         st.markdown(f"<h3 style='color: #F8FAFC; margin-bottom: 5px;'>[{res['ticker']}] {res['company_name']}</h3>", unsafe_allow_html=True)
     
     with col_btn:
-        # TAURUS LAB 이미지 인코딩
         img_src = get_image_base64("taurusfinal.png")
-        
-        # 이미지를 정상적으로 로드했을 때와 실패했을 때 예외 처리
         if img_src:
             img_html = f'<img src="{img_src}" style="width: 100%; height: 100%; object-fit: cover;">'
         else:
