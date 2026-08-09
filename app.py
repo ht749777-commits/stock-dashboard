@@ -11,6 +11,7 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 import matplotlib.pyplot as plt
+from streamlit_searchbox import st_searchbox
 
 # 페이지 설정 (반응형 와이드 레이아웃)
 st.set_page_config(
@@ -19,7 +20,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# 🎨 다크 테마 및 토스 스타일 입력창 CSS 커스텀 (흰색 배경 및 빨간 테두리 원천 차단)
+# 🎨 다크 테마 및 토스 스타일 검색창 CSS (흰색 배경 및 빨간 테두리 완전 박멸)
 st.markdown("""
     <style>
     .stApp { background-color: #0B0E14 !important; color: #E0E0E0 !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
@@ -32,22 +33,48 @@ st.markdown("""
         margin-bottom: 15px;
     }
 
-    /* Streamlit 입력창을 완벽한 토스풍 다크 박스로 변환 */
-    div[data-testid="stTextInput"] input {
+    /* streamlit-searchbox 전체 다크 모드 스타일 강제 적용 */
+    div[data-testid="stSearchbox"] {
+        background-color: transparent !important;
+    }
+    
+    /* 검색창 메인 박스 (흰색 배경 및 빨간 테두리 제거 후 다크톤 적용) */
+    div[data-testid="stSearchbox"] > div {
         background-color: #121824 !important;
-        color: #F8FAFC !important;
         border: 1px solid #1E293B !important;
         border-radius: 10px !important;
-        padding: 12px 16px !important;
+        box-shadow: none !important;
     }
-    div[data-testid="stTextInput"] input:focus {
+
+    /* 입력창 내부 텍스트 및 배경 */
+    div[data-testid="stSearchbox"] input {
+        background-color: #121824 !important;
+        color: #F8FAFC !important;
+    }
+
+    /* 포커스 시 토스 초록색 테두리 적용 */
+    div[data-testid="stSearchbox"] > div:focus-within {
         border: 1px solid #00E676 !important;
         box-shadow: 0 0 0 1px #00E676 !important;
     }
-    div[data-testid="stTextInput"] label {
-        color: #94A3B8 !important;
-        font-weight: 600 !important;
-        font-size: 13px !important;
+
+    /* 자동완성 드롭다운 목록 전체 박스 */
+    div[data-baseweb="menu"], ul[role="listbox"] {
+        background-color: #121824 !important;
+        border: 1px solid #1E293B !important;
+        border-radius: 0 0 10px 10px !important;
+    }
+
+    /* 드롭다운 개별 옵션 항목 */
+    div[data-baseweb="menu"] li, div[role="option"] {
+        background-color: #121824 !important;
+        color: #CBD5E1 !important;
+    }
+
+    /* 드롭다운 항목 마우스 호버 시 */
+    div[data-baseweb="menu"] li:hover, div[role="option"]:hover {
+        background-color: #1E293B !important;
+        color: #00E676 !important;
     }
 
     div[data-testid="stMetric"] {
@@ -106,6 +133,29 @@ class QuantEngine:
         "guidance": "가이던스", "rally": "랠리", "plummet": "폭락", "surge": "급등",
         "soar": "폭등", "dip": "조정", "buy the dip": "저가 매수", "market cap": "시가총액"
     }
+
+    @staticmethod
+    def search_stock_suggestions(search_term: str):
+        if not search_term or len(search_term.strip()) == 0:
+            return []
+        term = search_term.strip().upper()
+        try:
+            url = f"https://query2.finance.yahoo.com/v1/finance/search?q={urllib.parse.quote(term)}&quotesCount=8&newsCount=0"
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=2) as response:
+                data = json.loads(response.read().decode('utf-8'))
+                quotes = data.get('quotes', [])
+
+                suggestions = []
+                for q in quotes:
+                    symbol = q.get('symbol', '')
+                    name = q.get('shortname', q.get('longname', symbol))
+                    ex = q.get('exchange', '')
+                    display_text = f"{symbol} | {name} ({ex})"
+                    suggestions.append((display_text, symbol))
+                return suggestions
+        except:
+            return []
 
     @staticmethod
     def professional_translate(text: str) -> str:
@@ -296,10 +346,30 @@ st.markdown(f"""
 
 col_search, col_dummy = st.columns([2.0, 3.0])
 with col_search:
-    search_input = st.text_input("티커 검색", value=st.session_state['selected_ticker'], placeholder="예: AAPL, TSLA, ASTS...")
-    if search_input and search_input.strip().upper() != st.session_state['selected_ticker']:
-        st.session_state['selected_ticker'] = search_input.strip().upper()
-        st.query_params["q"] = search_input.strip().upper()
+    selected_ticker_result = st_searchbox(
+        QuantEngine.search_stock_suggestions,
+        placeholder="티커 검색 (예: asts)...",
+        key="stock_autocomplete_search",
+        style_overrides={
+            "control": {
+                "backgroundColor": "#121824",
+                "borderColor": "#1E293B",
+                "boxShadow": "none",
+            },
+            "menu": {
+                "backgroundColor": "#121824",
+                "borderColor": "#1E293B",
+            },
+            "option": {
+                "backgroundColor": "#121824",
+                "color": "#E0E0E0",
+            }
+        }
+    )
+
+    if selected_ticker_result and selected_ticker_result != st.session_state['selected_ticker']:
+        st.session_state['selected_ticker'] = selected_ticker_result.upper()
+        st.query_params["q"] = selected_ticker_result.upper()
         st.rerun()
 
 res = QuantEngine.fetch_market_data(st.session_state['selected_ticker'], st.session_state['timeframe'])
