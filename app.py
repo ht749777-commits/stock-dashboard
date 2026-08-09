@@ -162,31 +162,6 @@ class QuantEngine:
             return "29,834.75 (+0.02%)"
 
     @staticmethod
-    def get_earnings_date(ticker_symbol: str) -> str:
-        # 실제 API에서 가져온 정확한 일정만 허용 (오류 방지를 위해 가짜 날짜 생성 로직 제거)
-        try:
-            url = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker_symbol}?modules=calendarEvents"
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=2) as response:
-                data = json.loads(response.read().decode('utf-8'))
-                events = data.get('quoteSummary', {}).get('result', [])[0].get('calendarEvents', {})
-                earnings_list = events.get('earnings', {}).get('earningsDate', [])
-                if earnings_list:
-                    ts = earnings_list[0].get('raw')
-                    if ts:
-                        dt = datetime.fromtimestamp(ts, tz=timezone.utc).astimezone(timezone(timedelta(hours=9)))
-                        now_kst = datetime.now(timezone(timedelta(hours=9)))
-                        diff_days = (dt.date() - now_kst.date()).days
-                        if -5 <= diff_days <= 30: # 한 달 내외로 임박한 실적만 표기
-                            if diff_days >= 0:
-                                return dt.strftime("%m월 %d일 실적 발표 예정")
-                            else:
-                                return dt.strftime("%m월 %d일 실적 발표됨")
-        except:
-            pass
-        return None
-
-    @staticmethod
     def get_google_news(ticker_symbol: str):
         news_list = []
         try:
@@ -351,10 +326,16 @@ with col_search:
 res = QuantEngine.fetch_market_data(st.session_state['selected_ticker'], st.session_state['timeframe'])
 
 if res:
-    earnings_str = QuantEngine.get_earnings_date(res['ticker'])
-    earnings_badge = f"<span style='background-color: #1E293B; color: #38BDF8; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; border: 1px solid #334155; margin-left: 12px;'>📢 {earnings_str}</span>" if earnings_str else ""
+    # 귀여운 실적발표 확인 버튼 배치 (종목명 옆)
+    earnings_btn_html = f"""
+    <a href="https://earnings.kr/" target="_blank" style="text-decoration: none;">
+        <span style="background-color: #1E293B; color: #38BDF8; font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 20px; border: 1px solid #334155; margin-left: 12px; display: inline-flex; align-items: center; gap: 4px; transition: 0.2s;">
+            📅 실적발표 확인하기
+        </span>
+    </a>
+    """
 
-    st.markdown(f"<h3 style='color: #F8FAFC; margin-bottom: 5px; display: flex; align-items: center;'><span>[{res['ticker']}] {res['company_name']}</span>{earnings_badge}</h3>", unsafe_allow_html=True)
+    st.markdown(f"<h3 style='color: #F8FAFC; margin-bottom: 5px; display: flex; align-items: center;'><span>[{res['ticker']}] {res['company_name']}</span>{earnings_btn_html}</h3>", unsafe_allow_html=True)
     
     score = res['score']
     
