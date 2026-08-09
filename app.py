@@ -427,7 +427,7 @@ margin-bottom: 20px;
 <h1 style="color: #FF2A2A; margin: 0; font-size: 32px; font-weight: 900; letter-spacing: 2px;">TAURUS LAB</h1>
 </div>""", unsafe_allow_html=True)
 
-# ── [Market Overview 영역 (슬롯머신 롤링 및 절대위치 드롭다운 컴포넌트)] ──
+# ── [Market Overview 영역 (st.markdown을 통한 슬롯머신 롤링 및 드롭다운)] ──
 market_data = QuantEngine.get_market_overview_data()
 
 nq_val, nq_chg = market_data["NQ"]
@@ -437,20 +437,12 @@ vix_val, vix_chg = market_data["VIX"]
 tnx_val, tnx_chg = market_data["TNX"]
 btc_val, btc_chg = market_data["BTC"]
 
-ticker_component_html = f"""
-<!DOCTYPE html>
-<html>
-<head>
+market_overview_html = f"""
 <style>
-    body {{
-        margin: 0;
-        background-color: transparent;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        overflow: visible;
-    }}
     .market-overview-wrapper {{
         position: relative;
         width: 100%;
+        margin-bottom: 10px;
     }}
     .market-overview-container {{
         position: relative;
@@ -521,7 +513,6 @@ ticker_component_html = f"""
         92% {{ top: -120px; }}
         100% {{ top: -144px; }}
     }}
-    /* 마우스 올릴 때 아래 공간을 차지하지 않고 위로 떠오르는(absolute) 드롭다운 패널 */
     .dropdown-panel {{
         display: none;
         position: absolute;
@@ -533,8 +524,8 @@ ticker_component_html = f"""
         border-radius: 10px;
         padding: 12px 18px;
         box-sizing: border-box;
-        box-shadow: 0 15px 35px rgba(0,0,0,0.7);
-        z-index: 9999;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.8);
+        z-index: 99999;
     }}
     .market-overview-container:hover .dropdown-panel {{
         display: block;
@@ -559,8 +550,7 @@ ticker_component_html = f"""
         font-weight: 700;
     }}
 </style>
-</head>
-<body>
+
 <div class="market-overview-wrapper">
     <div class="market-overview-container">
         <div class="market-bar">
@@ -578,7 +568,6 @@ ticker_component_html = f"""
             </div>
         </div>
         
-        <!-- 마우스 오버 시 절대위치로 나타나는 전체 지표 요약 패널 -->
         <div class="dropdown-panel">
             <div style="color: #00E676; font-weight: 800; font-size: 13px; margin-bottom: 8px;">🔥 실시간 주요 마켓 지표 요약</div>
             <div class="grid-row">
@@ -608,12 +597,8 @@ ticker_component_html = f"""
         </div>
     </div>
 </div>
-</body>
-</html>
 """
-
-components.html(ticker_component_html, height=65)
-st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
+st.markdown(market_overview_html, unsafe_allow_html=True)
 
 col_search, _ = st.columns([2.0, 3.0])
 with col_search:
