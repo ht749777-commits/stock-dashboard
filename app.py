@@ -427,7 +427,7 @@ margin-bottom: 20px;
 <h1 style="color: #FF2A2A; margin: 0; font-size: 32px; font-weight: 900; letter-spacing: 2px;">TAURUS LAB</h1>
 </div>""", unsafe_allow_html=True)
 
-# ── [Market Overview 영역 (게임 아이템 툴팁 스타일)] ──
+# ── [Market Overview 영역 (게임 아이템 툴팁 - 3개씩 2줄 그리드 스타일)] ──
 market_data = QuantEngine.get_market_overview_data()
 
 nq_val, nq_chg = market_data["NQ"]
@@ -512,17 +512,17 @@ market_component_html = f"""
         92% {{ top: -120px; }}
         100% {{ top: -144px; }}
     }}
-    /* 게임 아이템 툴팁(Tooltip) 스타일 (상단 타이틀 제거) */
+    /* 게임 아이템 툴팁(Tooltip) 스타일 - 3개씩 2줄 그리드 패널 */
     .dropdown-panel {{
         display: none;
         position: absolute;
         top: 54px;
         left: 0;
-        width: 380px;
+        width: 620px;
         background-color: rgba(13, 17, 23, 0.96);
         border: 1px solid #334155;
         border-radius: 6px;
-        padding: 10px 16px;
+        padding: 14px 16px;
         box-sizing: border-box;
         box-shadow: 0 12px 28px rgba(0, 0, 0, 0.85);
         z-index: 999;
@@ -531,20 +531,39 @@ market_component_html = f"""
     .market-overview-container:hover .dropdown-panel {{
         display: block;
     }}
-    .grid-row {{
+    .grid-container {{
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+    }}
+    .grid-item {{
+        background-color: #121824;
+        border: 1px solid #1E293B;
+        border-radius: 6px;
+        padding: 8px 10px;
         display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 5px 0;
-        font-size: 12px;
+        flex-direction: column;
+        justify-content: center;
     }}
     .label-name {{
         color: #94A3B8;
-        font-weight: 500;
+        font-weight: 600;
+        font-size: 11px;
+        margin-bottom: 2px;
+    }}
+    .value-box {{
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
     }}
     .label-val {{
         color: #F8FAFC;
         font-weight: 700;
+        font-size: 13px;
+    }}
+    .label-chg {{
+        font-size: 11px;
+        font-weight: 600;
     }}
 </style>
 </head>
@@ -566,29 +585,49 @@ market_component_html = f"""
     </div>
     
     <div class="dropdown-panel">
-        <div class="grid-row">
-            <span class="label-name">나스닥 100 선물</span>
-            <div><span class="label-val">{nq_val:,.2f}</span> <span style="color:{'#00E676' if nq_chg>=0 else '#EF4444'}; font-size:11px;">({nq_chg:+.2f}%)</span></div>
-        </div>
-        <div class="grid-row">
-            <span class="label-name">S&P 500 선물</span>
-            <div><span class="label-val">{es_val:,.2f}</span> <span style="color:{'#00E676' if es_chg>=0 else '#EF4444'}; font-size:11px;">({es_chg:+.2f}%)</span></div>
-        </div>
-        <div class="grid-row">
-            <span class="label-name">원/달러 환율</span>
-            <div><span class="label-val">₩{usd_val:,.2f}</span> <span style="color:{'#00E676' if usd_chg>=0 else '#EF4444'}; font-size:11px;">({usd_chg:+.2f}%)</span></div>
-        </div>
-        <div class="grid-row">
-            <span class="label-name">VIX (변동성 지수)</span>
-            <div><span class="label-val">{vix_val:,.2f}</span> <span style="color:{'#EF4444' if vix_chg>=0 else '#00E676'}; font-size:11px;">({vix_chg:+.2f}%)</span></div>
-        </div>
-        <div class="grid-row">
-            <span class="label-name">미국 10년물 국채금리</span>
-            <div><span class="label-val">{tnx_val:.2f}%</span> <span style="color:{'#00E676' if tnx_chg>=0 else '#EF4444'}; font-size:11px;">({tnx_chg:+.2f}%)</span></div>
-        </div>
-        <div class="grid-row">
-            <span class="label-name">비트코인 (BTC)</span>
-            <div><span class="label-val">${btc_val:,.0f}</span> <span style="color:{'#00E676' if tnx_chg>=0 else '#EF4444'}; font-size:11px;">({btc_chg:+.2f}%)</span></div>
+        <div class="grid-container">
+            <div class="grid-item">
+                <span class="label-name">나스닥 100 선물</span>
+                <div class="value-box">
+                    <span class="label-val">{nq_val:,.2f}</span>
+                    <span class="label-chg" style="color:{'#00E676' if nq_chg>=0 else '#EF4444'};">({nq_chg:+.2f}%)</span>
+                </div>
+            </div>
+            <div class="grid-item">
+                <span class="label-name">S&P 500 선물</span>
+                <div class="value-box">
+                    <span class="label-val">{es_val:,.2f}</span>
+                    <span class="label-chg" style="color:{'#00E676' if es_chg>=0 else '#EF4444'};">({es_chg:+.2f}%)</span>
+                </div>
+            </div>
+            <div class="grid-item">
+                <span class="label-name">원/달러 환율</span>
+                <div class="value-box">
+                    <span class="label-val">₩{usd_val:,.2f}</span>
+                    <span class="label-chg" style="color:{'#00E676' if usd_chg>=0 else '#EF4444'};">({usd_chg:+.2f}%)</span>
+                </div>
+            </div>
+            <div class="grid-item">
+                <span class="label-name">VIX (변동성 지수)</span>
+                <div class="value-box">
+                    <span class="label-val">{vix_val:,.2f}</span>
+                    <span class="label-chg" style="color:{'#EF4444' if vix_chg>=0 else '#00E676'};">({vix_chg:+.2f}%)</span>
+                </div>
+            </div>
+            <div class="grid-item">
+                <span class="label-name">미국 10년물 국채금리</span>
+                <div class="value-box">
+                    <span class="label-val">{tnx_val:.2f}%</span>
+                    <span class="label-chg" style="color:{'#00E676' if tnx_chg>=0 else '#EF4444'};">({tnx_chg:+.2f}%)</span>
+                </div>
+            </div>
+            <div class="grid-item">
+                <span class="label-name">비트코인 (BTC)</span>
+                <div class="value-box">
+                    <span class="label-val">${btc_val:,.0f}</span>
+                    <span class="label-chg" style="color:{'#00E676' if btc_chg>=0 else '#EF4444'};">({btc_chg:+.2f}%)</span>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -664,7 +703,7 @@ cursor: pointer;
     )
     
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("현재가", f"${res['curr_price']:.2f}", f"{res['price_change_p']:+.2f}%")
+    col1.metric("현재가", f"${res['curr_price']:.2f}", f"${res['price_change_p']:+.2f}%")
     col2.metric("보수적 목표가 (TP)", f"${res['take_profit']}")
     col3.metric("타이트 손절가 (SL)", f"${res['stop_loss']}")
     col4.metric("공매도 비율", res['short_ratio'])
