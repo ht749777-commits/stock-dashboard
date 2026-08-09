@@ -108,6 +108,7 @@ class QuantEngine:
     }
 
     @staticmethod
+    @st.cache_data(ttl=300)
     def professional_translate(text: str) -> str:
         if not text: return text
         for eng, kor in QuantEngine.FINANCIAL_DICT.items():
@@ -117,7 +118,7 @@ class QuantEngine:
             encoded_text = urllib.parse.quote(text)
             url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ko&dt=t&q={encoded_text}"
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=2) as response:
+            with urllib.request.urlopen(req, timeout=1.5) as response:
                 res_data = json.loads(response.read().decode('utf-8'))
                 translated = "".join([item[0] for item in res_data[0] if item[0]])
                 return translated
@@ -125,12 +126,13 @@ class QuantEngine:
             return text
 
     @staticmethod
+    @st.cache_data(ttl=60)
     def search_stock_suggestions(search_term: str):
         if not search_term or len(search_term.strip()) == 0:
             return []
         term = search_term.strip().upper()
         try:
-            url = f"https://query2.finance.yahoo.com/v1/finance/search?q={urllib.parse.quote(term)}&quotesCount=6&newsCount=0"
+            url = f"https://query2.finance.yahoo.com/v1/finance/search?q={urllib.parse.quote(term)}&quotesCount=5&newsCount=0"
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
             with urllib.request.urlopen(req, timeout=2) as response:
                 data = json.loads(response.read().decode('utf-8'))
@@ -156,11 +158,12 @@ class QuantEngine:
             return "최근"
 
     @staticmethod
+    @st.cache_data(ttl=60)
     def get_nasdaq_futures():
         try:
             url = "https://query1.finance.yahoo.com/v8/finance/chart/NQ=F?range=1d&interval=1m"
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=3) as response:
+            with urllib.request.urlopen(req, timeout=2) as response:
                 data = json.loads(response.read().decode())
                 meta = data['chart']['result'][0]['meta']
                 curr = meta['regularMarketPrice']
@@ -171,73 +174,49 @@ class QuantEngine:
             return "29,834.75 (+0.02%)"
 
     @staticmethod
+    @st.cache_data(ttl=300)
     def get_google_news(ticker_symbol: str):
         news_list = []
         try:
             query = urllib.parse.quote(f"{ticker_symbol} stock")
-            rss_url = f"https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=US:en&t={int(time.time())}"
+            rss_url = f"https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=US:en"
             feed = feedparser.parse(rss_url)
-            three_days_ago = datetime.now(timezone(timedelta(hours=9))) - timedelta(days=3)
-
-            for entry in feed.entries:
+            for entry in feed.entries[:3]:
                 pub_parsed = entry.get('published_parsed')
-                if pub_parsed:
-                    dt_kst = datetime(*pub_parsed[:6], tzinfo=timezone.utc).astimezone(timezone(timedelta(hours=9)))
-                    if dt_kst < three_days_ago: continue
-                
                 title = QuantEngine.professional_translate(entry.get('title', 'No Title'))
                 summary = QuantEngine.professional_translate(entry.get('summary', '') or entry.get('description', ''))
                 news_list.append((title, summary, QuantEngine.convert_to_kst_string(pub_parsed), entry.get('link', '#')))
-                if len(news_list) >= 4: break
         except:
             pass
         return news_list if news_list else [(f"[{ticker_symbol}] 최근 뉴스가 없습니다.", "", "방금 전", "#")]
 
     @staticmethod
+    @st.cache_data(ttl=300)
     def get_social_gossip(ticker_symbol: str):
         social_list = []
         try:
-            query = urllib.parse.quote(f"{ticker_symbol} (site:reddit.com OR site:x.com OR stocktwits OR rumor)")
-            rss_url = f"https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=US:en&t={int(time.time())}"
+            query = urllib.parse.quote(f"{ticker_symbol} (site:reddit.com OR site:x.com)")
+            rss_url = f"https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=US:en"
             feed = feedparser.parse(rss_url)
-            two_days_ago = datetime.now(timezone(timedelta(hours=9))) - timedelta(days=2)
-
-            for entry in feed.entries:
+            for entry in feed.entries[:3]:
                 pub_parsed = entry.get('published_parsed')
-                if pub_parsed:
-                    dt_kst = datetime(*pub_parsed[:6], tzinfo=timezone.utc).astimezone(timezone(timedelta(hours=9)))
-                    if dt_kst < two_days_ago: continue
-
                 title = QuantEngine.professional_translate(entry.get('title', 'Social Discussion'))
                 summary = QuantEngine.professional_translate(entry.get('summary', '') or entry.get('description', ''))
                 social_list.append((title, summary, QuantEngine.convert_to_kst_string(pub_parsed), entry.get('link', '#')))
-                if len(social_list) >= 4: break
         except:
             pass
-        return social_list if social_list else [(f"[{ticker_symbol}] 최근 찌라시가 없습니다.", "", "방금 전", "#")]
+        return social_list if social_list else [(f"[{ticker_symbol}] 최근 소셜 토론이 없습니다.", "", "방금 전", "#")]
 
     @staticmethod
-    def run_backtest(ticker_symbol: str):
-        try:
-            df = yf.Ticker(ticker_symbol).history(period="1y", interval="1d")
-            if df.empty or len(df) < 50: return 1906.4, 64.3, -20.6
-            close = df['Close']
-            ema20 = close.ewm(span=20, adjust=False).mean()
-            strategy_ret = close.pct_change().fillna(0).where(close > ema20, 0)
-            total_return = float((((1 + strategy_ret).prod() - 1) * 100))
-            win_rate = float((strategy_ret[strategy_ret != 0] > 0).mean() * 100) if len(strategy_ret[strategy_ret != 0]) > 0 else 64.3
-            mdd = float(((1 + strategy_ret).cumprod() / (1 + strategy_ret).cumprod().cummax() - 1).min() * 100)
-            return total_return, win_rate, mdd
-        except:
-            return 1906.4, 64.3, -20.6
-
-    @staticmethod
+    @st.cache_data(ttl=300)
     def fetch_market_data(ticker_symbol: str, timeframe: str = "1D"):
         try:
             ticker_obj = yf.Ticker(ticker_symbol)
             info = ticker_obj.info
             data = ticker_obj.history(period="1y" if timeframe == "1D" else "5d", interval="1d" if timeframe == "1D" else "15m")
             
+            if data.empty: return None
+
             close = data['Close']
             high = data['High']
             low = data['Low']
@@ -257,35 +236,16 @@ class QuantEngine:
             
             rsi = float(100 - (100 / (1 + (close.diff().where(close.diff() > 0, 0).rolling(14).mean() / (-close.diff().where(close.diff() < 0, 0).rolling(14).mean() + 1e-9)).iloc[-1])))
             short_ratio = info.get('shortPercentOfFloat', 0.05)
-            bt_ret, bt_win, bt_mdd = QuantEngine.run_backtest(ticker_symbol)
 
-            score = 40 
-            if len(close) >= 200 and curr_price > ema20.iloc[-1] and ema20.iloc[-1] > ema50.iloc[-1] and ema50.iloc[-1] > ema200.iloc[-1]:
-                score += 25
-            elif curr_price > ema20.iloc[-1]:
-                score += 5
-            else:
-                score -= 20
+            # 백테스트 간소화
+            strategy_ret = close.pct_change().fillna(0).where(close > ema20, 0)
+            bt_ret = float((((1 + strategy_ret).prod() - 1) * 100))
+            bt_win = float((strategy_ret[strategy_ret != 0] > 0).mean() * 100) if len(strategy_ret[strategy_ret != 0]) > 0 else 64.3
+            bt_mdd = float(((1 + strategy_ret).cumprod() / (1 + strategy_ret).cumprod().cummax() - 1).min() * 100)
 
-            if 45 <= rsi <= 60: 
-                score += 20
-            elif 60 < rsi <= 70:
-                score += 10
-            elif rsi > 70 or rsi < 35:
-                score -= 25
-
-            avg_volume_20 = volume.tail(20).mean()
-            if avg_volume_20 * curr_price < 10000000:
-                score -= 25
-            else:
-                score += 10
-
-            disparity = ((curr_price - ema20.iloc[-1]) / ema20.iloc[-1]) * 100
-            if disparity > 10:
-                score -= 20
-            elif disparity < -5:
-                score -= 10
-
+            score = 65
+            if curr_price > ema20.iloc[-1]: score += 15
+            if 45 <= rsi <= 65: score += 20
             score = max(0, min(100, score))
 
             raw_co_name = info.get('longName', ticker_symbol)
@@ -315,12 +275,11 @@ if "tf" in query_params:
 
 st.markdown(f"""
     <div class="dashboard-header">
-        <span style="color: #00E676; font-weight: 900; font-size: 16px;">📊 Stock Dashboard (Conservative Mode)</span>
+        <span style="color: #00E676; font-weight: 900; font-size: 16px;">📊 Stock Dashboard (Speed Optimized)</span>
         <span style="color: #94A3B8; font-size: 12px; margin-left: 10px;">Overview | 나스닥 선물: {QuantEngine.get_nasdaq_futures()}</span>
     </div>
 """, unsafe_allow_html=True)
 
-# 🔍 토스증권 스타일 통합형 드롭다운 검색창 구현 (HTML 컴포넌트 조합)
 col_search, col_dummy = st.columns([2.0, 3.0])
 with col_search:
     search_input = st.text_input("티커 검색", value=st.session_state['selected_ticker'], placeholder="예: AAPL, TSLA, ASTS...")
@@ -334,7 +293,6 @@ with col_search:
                 name = item["name"]
                 ex = item["exchange"]
                 
-                # 검색어 글자만 초록색으로 강조 처리
                 pattern = re.compile(re.escape(search_input.strip()), re.IGNORECASE)
                 highlighted_sym = pattern.sub(lambda m: f"<span style='color: #00E676; font-weight: 900;'>{m.group(0)}</span>", sym)
                 
@@ -425,7 +383,7 @@ if res:
     fig.tight_layout()
     st.pyplot(fig)
 
-    tab_news, tab_gossip = st.tabs(["📰 구글 영문 뉴스", "💬 X & 레딧 찌라시"])
+    tab_news, tab_gossip = st.tabs(["📰 구글 영문 뉴스", "💬 X & 레딧 토론"])
     
     with tab_news:
         news = QuantEngine.get_google_news(res['ticker'])
