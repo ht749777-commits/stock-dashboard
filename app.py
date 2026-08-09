@@ -34,171 +34,169 @@ st.set_page_config(
 )
 
 # 🎨 다크 테마 및 롤링 슬롯 + 호버 툴팁 CSS
-st.markdown(textwrap.dedent("""
-    <style>
-    .stApp { background-color: #0B0E14 !important; color: #E0E0E0 !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    
-    /* 마켓 오버뷰 호버 및 슬롯 컨테이너 */
-    .market-overview-container {
-        position: relative;
-        display: flex;
-        align-items: center;
-        width: 100%;
-        height: 48px;
-        background-color: #121824;
-        padding: 0 18px;
-        border-radius: 10px;
-        border: 1px solid #1E293B;
-        margin-bottom: 15px;
-        cursor: pointer;
-        transition: border-color 0.2s ease;
-    }
-    .market-overview-container:hover {
-        border-color: #00E676;
-    }
+st.markdown("""<style>
+.stApp { background-color: #0B0E14 !important; color: #E0E0E0 !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
 
-    .market-title-badge {
-        color: #00E676; 
-        font-weight: 900; 
-        font-size: 15px; 
-        white-space: nowrap;
-        margin-right: 15px;
-        display: flex;
-        align-items: center;
-    }
+/* 마켓 오버뷰 호버 및 슬롯 컨테이너 */
+.market-overview-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: 48px;
+    background-color: #121824;
+    padding: 0 18px;
+    border-radius: 10px;
+    border: 1px solid #1E293B;
+    margin-bottom: 15px;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+.market-overview-container:hover {
+    border-color: #00E676;
+}
 
-    /* 슬롯 롤링 윈도우 */
-    .ticker-slider-window {
-        height: 24px;
-        overflow: hidden;
-        position: relative;
-        flex-grow: 1;
-    }
+.market-title-badge {
+    color: #00E676; 
+    font-weight: 900; 
+    font-size: 15px; 
+    white-space: nowrap;
+    margin-right: 15px;
+    display: flex;
+    align-items: center;
+}
 
-    .ticker-slider-list {
-        display: flex;
-        flex-direction: column;
-        margin: 0;
-        padding: 0;
-        list-style: none;
-        animation: slotRoll 18s cubic-bezier(0.645, 0.045, 0.355, 1) infinite;
-    }
-    
-    .market-overview-container:hover .ticker-slider-list {
-        animation-play-state: paused;
-    }
+/* 슬롯 롤링 윈도우 */
+.ticker-slider-window {
+    height: 24px;
+    overflow: hidden;
+    position: relative;
+    flex-grow: 1;
+}
 
-    .ticker-item {
-        height: 24px;
-        line-height: 24px;
-        font-size: 13px;
-        color: #94A3B8;
-        white-space: nowrap;
-    }
+.ticker-slider-list {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    animation: slotRoll 18s cubic-bezier(0.645, 0.045, 0.355, 1) infinite;
+}
 
-    /* 6개 지표 x 3초 = 18초 키프레임 애니메이션 */
-    @keyframes slotRoll {
-        0%, 13.88%   { transform: translateY(0px); }
-        16.66%, 30.55% { transform: translateY(-24px); }
-        33.33%, 47.22% { transform: translateY(-48px); }
-        50.00%, 63.88% { transform: translateY(-72px); }
-        66.66%, 80.55% { transform: translateY(-96px); }
-        83.33%, 97.22% { transform: translateY(-120px); }
-        100%          { transform: translateY(-144px); }
-    }
+.market-overview-container:hover .ticker-slider-list {
+    animation-play-state: paused;
+}
 
-    /* 호버 툴팁 박스 (기본 숨김 -> 호버 시에만 표시) */
-    .market-overview-tooltip {
-        display: none;
-        opacity: 0;
-        pointer-events: none;
-        width: 340px;
-        background-color: #1A2234;
-        color: #F8FAFC;
-        text-align: left;
-        border-radius: 10px;
-        padding: 14px 16px;
-        position: absolute;
-        z-index: 999;
-        top: 100%;
-        left: 0;
-        margin-top: 8px;
-        border: 1px solid #334155;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-        transition: opacity 0.2s ease-in-out;
-    }
+.ticker-item {
+    height: 24px;
+    line-height: 24px;
+    font-size: 13px;
+    color: #94A3B8;
+    white-space: nowrap;
+}
 
-    .market-overview-container:hover .market-overview-tooltip {
-        display: block !important;
-        opacity: 1 !important;
-        pointer-events: auto;
-    }
+/* 6개 지표 x 3초 = 18초 키프레임 애니메이션 */
+@keyframes slotRoll {
+    0%, 13.88%   { transform: translateY(0px); }
+    16.66%, 30.55% { transform: translateY(-24px); }
+    33.33%, 47.22% { transform: translateY(-48px); }
+    50.00%, 63.88% { transform: translateY(-72px); }
+    66.66%, 80.55% { transform: translateY(-96px); }
+    83.33%, 97.22% { transform: translateY(-120px); }
+    100%          { transform: translateY(-144px); }
+}
 
-    .tooltip-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 6px 0;
-        border-bottom: 1px solid #283548;
-        font-size: 13px;
-    }
-    .tooltip-row:last-child {
-        border-bottom: none;
-    }
-    .tooltip-label { color: #94A3B8; font-weight: 500; }
-    .tooltip-val { font-weight: 700; color: #F8FAFC; }
+/* 호버 툴팁 박스 (기본 숨김 -> 호버 시에만 표시) */
+.market-overview-tooltip {
+    display: none;
+    opacity: 0;
+    pointer-events: none;
+    width: 340px;
+    background-color: #1A2234;
+    color: #F8FAFC;
+    text-align: left;
+    border-radius: 10px;
+    padding: 14px 16px;
+    position: absolute;
+    z-index: 999;
+    top: 100%;
+    left: 0;
+    margin-top: 8px;
+    border: 1px solid #334155;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    transition: opacity 0.2s ease-in-out;
+}
 
-    div[data-testid="stMetric"] {
-        background-color: #121824 !important;
-        border: 1px solid #1E293B !important;
-        padding: 14px !important;
-        border-radius: 10px !important;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-        min-height: 95px !important;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-    }
-    div[data-testid="stMetric"] label {
-        color: #94A3B8 !important;
-        font-weight: 600 !important;
-        font-size: 11px !important;
-    }
-    div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
-        color: #F8FAFC !important;
-        font-weight: 800 !important;
-        font-size: 17px !important;
-    }
+.market-overview-container:hover .market-overview-tooltip {
+    display: block !important;
+    opacity: 1 !important;
+    pointer-events: auto;
+}
 
-    .news-card { 
-        background-color: #121824 !important; 
-        padding: 12px 16px; 
-        border-radius: 8px; 
-        border: 1px solid #1E293B; 
-        margin-bottom: 8px; 
-    }
+.tooltip-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid #283548;
+    font-size: 13px;
+}
+.tooltip-row:last-child {
+    border-bottom: none;
+}
+.tooltip-label { color: #94A3B8; font-weight: 500; }
+.tooltip-val { font-weight: 700; color: #F8FAFC; }
 
-    .stButton > button {
-        background-color: #121824 !important;
-        color: #F8FAFC !important;
-        border: 1px solid #1E293B !important;
-        border-radius: 8px !important;
-        padding: 10px 14px !important;
-        text-align: left !important;
-        font-size: 13px !important;
-        font-weight: 600 !important;
-    }
-    .stButton > button:hover {
-        background-color: #1E293B !important;
-        border-color: #00E676 !important;
-        color: #00E676 !important;
-    }
-    
-    .stTabs [data-baseweb="tab-list"] { gap: 6px; background-color: transparent; }
-    .stTabs [data-baseweb="tab"] { background-color: #121824; border-radius: 6px; color: #94A3B8; border: 1px solid #1E293B; padding: 6px 12px; font-size: 13px; }
-    .stTabs [aria-selected="true"] { background-color: #1E293B !important; color: #00E676 !important; font-weight: bold; }
-    </style>
-"""), unsafe_allow_html=True)
+div[data-testid="stMetric"] {
+    background-color: #121824 !important;
+    border: 1px solid #1E293B !important;
+    padding: 14px !important;
+    border-radius: 10px !important;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    min-height: 95px !important;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+div[data-testid="stMetric"] label {
+    color: #94A3B8 !important;
+    font-weight: 600 !important;
+    font-size: 11px !important;
+}
+div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
+    color: #F8FAFC !important;
+    font-weight: 800 !important;
+    font-size: 17px !important;
+}
+
+.news-card { 
+    background-color: #121824 !important; 
+    padding: 12px 16px; 
+    border-radius: 8px; 
+    border: 1px solid #1E293B; 
+    margin-bottom: 8px; 
+}
+
+.stButton > button {
+    background-color: #121824 !important;
+    color: #F8FAFC !important;
+    border: 1px solid #1E293B !important;
+    border-radius: 8px !important;
+    padding: 10px 14px !important;
+    text-align: left !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+}
+.stButton > button:hover {
+    background-color: #1E293B !important;
+    border-color: #00E676 !important;
+    color: #00E676 !important;
+}
+
+.stTabs [data-baseweb="tab-list"] { gap: 6px; background-color: transparent; }
+.stTabs [data-baseweb="tab"] { background-color: #121824; border-radius: 6px; color: #94A3B8; border: 1px solid #1E293B; padding: 6px 12px; font-size: 13px; }
+.stTabs [aria-selected="true"] { background-color: #1E293B !important; color: #00E676 !important; font-weight: bold; }
+</style>""", unsafe_allow_html=True)
 
 class QuantEngine:
     FINANCIAL_DICT = {
@@ -527,24 +525,20 @@ col_b1, col_b2, col_b3 = st.columns([1, 2, 1])
 with col_b2:
     main_logo = get_image_base64("taurusfinal.png")
     if main_logo:
-        st.markdown(f"""
-            <div style="text-align: center; margin-bottom: 25px;">
-                <img src="{main_logo}" style="max-width: 260px; width: 100%; height: auto;">
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"""<div style="text-align: center; margin-bottom: 25px;">
+<img src="{main_logo}" style="max-width: 260px; width: 100%; height: auto;">
+</div>""", unsafe_allow_html=True)
     else:
-        st.markdown("""
-            <div style="
-                background: linear-gradient(135deg, #121824 0%, #1E293B 100%);
-                border: 2px solid #FF2A2A;
-                border-radius: 12px;
-                padding: 20px;
-                text-align: center;
-                margin-bottom: 20px;
-            ">
-                <h1 style="color: #FF2A2A; margin: 0; font-size: 32px; font-weight: 900; letter-spacing: 2px;">TAURUS LAB</h1>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown("""<div style="
+background: linear-gradient(135deg, #121824 0%, #1E293B 100%);
+border: 2px solid #FF2A2A;
+border-radius: 12px;
+padding: 20px;
+text-align: center;
+margin-bottom: 20px;
+">
+<h1 style="color: #FF2A2A; margin: 0; font-size: 32px; font-weight: 900; letter-spacing: 2px;">TAURUS LAB</h1>
+</div>""", unsafe_allow_html=True)
 
 # ── [Market Overview 영역] ──
 market_data = QuantEngine.get_market_overview_data()
@@ -556,75 +550,73 @@ vix_val, vix_chg = market_data["VIX"]
 tnx_val, tnx_chg = market_data["TNX"]
 btc_val, btc_chg = market_data["BTC"]
 
-st.markdown(textwrap.dedent(f"""
-    <div class="market-overview-container">
-        <div class="market-title-badge">📊 Market Overview</div>
-        
-        <div class="ticker-slider-window">
-            <ul class="ticker-slider-list">
-                <li class="ticker-item">
-                    나스닥 100 선물: <b style="color:#F8FAFC;">{nq_val:,.2f}</b> 
-                    <span style="color:{'#00E676' if nq_chg>=0 else '#EF4444'};">({nq_chg:+.2f}%)</span>
-                    <span style="color:#64748B; font-size: 11px; margin-left: 8px;">(🔍 마우스를 올려 상세지표 확인)</span>
-                </li>
-                <li class="ticker-item">
-                    S&P 500 선물: <b style="color:#F8FAFC;">{es_val:,.2f}</b> 
-                    <span style="color:{'#00E676' if es_chg>=0 else '#EF4444'};">({es_chg:+.2f}%)</span>
-                </li>
-                <li class="ticker-item">
-                    원/달러 환율: <b style="color:#F8FAFC;">₩{usd_val:,.2f}</b> 
-                    <span style="color:{'#00E676' if usd_chg>=0 else '#EF4444'};">({usd_chg:+.2f}%)</span>
-                </li>
-                <li class="ticker-item">
-                    VIX (공포 지수): <b style="color:#F8FAFC;">{vix_val:,.2f}</b> 
-                    <span style="color:{'#EF4444' if vix_chg>=0 else '#00E676'};">({vix_chg:+.2f}%)</span>
-                </li>
-                <li class="ticker-item">
-                    미국 10년물 국채금리: <b style="color:#F8FAFC;">{tnx_val:.2f}%</b> 
-                    <span style="color:{'#00E676' if tnx_chg>=0 else '#EF4444'};">({tnx_chg:+.2f}%)</span>
-                </li>
-                <li class="ticker-item">
-                    비트코인 (BTC): <b style="color:#F8FAFC;">${btc_val:,.0f}</b> 
-                    <span style="color:{'#00E676' if btc_chg>=0 else '#EF4444'};">({btc_chg:+.2f}%)</span>
-                </li>
-                <li class="ticker-item">
-                    나스닥 100 선물: <b style="color:#F8FAFC;">{nq_val:,.2f}</b> 
-                    <span style="color:{'#00E676' if nq_chg>=0 else '#EF4444'};">({nq_chg:+.2f}%)</span>
-                </li>
-            </ul>
-        </div>
-        
-        <div class="market-overview-tooltip">
-            <div style="font-weight: 800; font-size: 13px; color: #00E676; margin-bottom: 8px; border-bottom: 1px solid #334155; padding-bottom: 4px;">
-                🌐 주요 글로벌 시장 지표
-            </div>
-            <div class="tooltip-row">
-                <span class="tooltip-label">나스닥 100 선물</span>
-                <span class="tooltip-val">{nq_val:,.2f} <small style="color:{'#00E676' if nq_chg>=0 else '#EF4444'};">({nq_chg:+.2f}%)</small></span>
-            </div>
-            <div class="tooltip-row">
-                <span class="tooltip-label">S&P 500 선물</span>
-                <span class="tooltip-val">{es_val:,.2f} <small style="color:{'#00E676' if es_chg>=0 else '#EF4444'};">({es_chg:+.2f}%)</small></span>
-            </div>
-            <div class="tooltip-row">
-                <span class="tooltip-label">원/달러 환율 (KRW)</span>
-                <span class="tooltip-val">₩{usd_val:,.2f} <small style="color:{'#00E676' if usd_chg>=0 else '#EF4444'};">({usd_chg:+.2f}%)</small></span>
-            </div>
-            <div class="tooltip-row">
-                <span class="tooltip-label">VIX (공포 지수)</span>
-                <span class="tooltip-val">{vix_val:,.2f} <small style="color:{'#EF4444' if vix_chg>=0 else '#00E676'};">({vix_chg:+.2f}%)</small></span>
-            </div>
-            <div class="tooltip-row">
-                <span class="tooltip-label">미국 10년물 국채금리</span>
-                <span class="tooltip-val">{tnx_val:.2f}% <small style="color:{'#00E676' if tnx_chg>=0 else '#EF4444'};">({tnx_chg:+.2f}%)</small></span>
-            </div>
-            <div class="tooltip-row">
-                <span class="tooltip-label">비트코인 (BTC)</span>
-                <span class="tooltip-val">${btc_val:,.0f} <small style="color:{'#00E676' if btc_chg>=0 else '#EF4444'};">({btc_chg:+.2f}%)</small></span>
-            </div>
-        </div>
-    </div>
-"""), unsafe_allow_html=True)
+st.markdown(f"""<div class="market-overview-container">
+<div class="market-title-badge">📊 Market Overview</div>
+
+<div class="ticker-slider-window">
+<ul class="ticker-slider-list">
+<li class="ticker-item">
+나스닥 100 선물: <b style="color:#F8FAFC;">{nq_val:,.2f}</b> 
+<span style="color:{'#00E676' if nq_chg>=0 else '#EF4444'};">({nq_chg:+.2f}%)</span>
+<span style="color:#64748B; font-size: 11px; margin-left: 8px;">(🔍 마우스를 올려 상세지표 확인)</span>
+</li>
+<li class="ticker-item">
+S&P 500 선물: <b style="color:#F8FAFC;">{es_val:,.2f}</b> 
+<span style="color:{'#00E676' if es_chg>=0 else '#EF4444'};">({es_chg:+.2f}%)</span>
+</li>
+<li class="ticker-item">
+원/달러 환율: <b style="color:#F8FAFC;">₩{usd_val:,.2f}</b> 
+<span style="color:{'#00E676' if usd_chg>=0 else '#EF4444'};">({usd_chg:+.2f}%)</span>
+</li>
+<li class="ticker-item">
+VIX (공포 지수): <b style="color:#F8FAFC;">{vix_val:,.2f}</b> 
+<span style="color:{'#EF4444' if vix_chg>=0 else '#00E676'};">({vix_chg:+.2f}%)</span>
+</li>
+<li class="ticker-item">
+미국 10년물 국채금리: <b style="color:#F8FAFC;">{tnx_val:.2f}%</b> 
+<span style="color:{'#00E676' if tnx_chg>=0 else '#EF4444'};">({tnx_chg:+.2f}%)</span>
+</li>
+<li class="ticker-item">
+비트코인 (BTC): <b style="color:#F8FAFC;">${btc_val:,.0f}</b> 
+<span style="color:{'#00E676' if btc_chg>=0 else '#EF4444'};">({btc_chg:+.2f}%)</span>
+</li>
+<li class="ticker-item">
+나스닥 100 선물: <b style="color:#F8FAFC;">{nq_val:,.2f}</b> 
+<span style="color:{'#00E676' if nq_chg>=0 else '#EF4444'};">({nq_chg:+.2f}%)</span>
+</li>
+</ul>
+</div>
+
+<div class="market-overview-tooltip">
+<div style="font-weight: 800; font-size: 13px; color: #00E676; margin-bottom: 8px; border-bottom: 1px solid #334155; padding-bottom: 4px;">
+🌐 주요 글로벌 시장 지표
+</div>
+<div class="tooltip-row">
+<span class="tooltip-label">나스닥 100 선물</span>
+<span class="tooltip-val">{nq_val:,.2f} <small style="color:{'#00E676' if nq_chg>=0 else '#EF4444'};">({nq_chg:+.2f}%)</small></span>
+</div>
+<div class="tooltip-row">
+<span class="tooltip-label">S&P 500 선물</span>
+<span class="tooltip-val">{es_val:,.2f} <small style="color:{'#00E676' if es_chg>=0 else '#EF4444'};">({es_chg:+.2f}%)</small></span>
+</div>
+<div class="tooltip-row">
+<span class="tooltip-label">원/달러 환율 (KRW)</span>
+<span class="tooltip-val">₩{usd_val:,.2f} <small style="color:{'#00E676' if usd_chg>=0 else '#EF4444'};">({usd_chg:+.2f}%)</small></span>
+</div>
+<div class="tooltip-row">
+<span class="tooltip-label">VIX (공포 지수)</span>
+<span class="tooltip-val">{vix_val:,.2f} <small style="color:{'#EF4444' if vix_chg>=0 else '#00E676'};">({vix_chg:+.2f}%)</small></span>
+</div>
+<div class="tooltip-row">
+<span class="tooltip-label">미국 10년물 국채금리</span>
+<span class="tooltip-val">{tnx_val:.2f}% <small style="color:{'#00E676' if tnx_chg>=0 else '#EF4444'};">({tnx_chg:+.2f}%)</small></span>
+</div>
+<div class="tooltip-row">
+<span class="tooltip-label">비트코인 (BTC)</span>
+<span class="tooltip-val">${btc_val:,.0f} <small style="color:{'#00E676' if btc_chg>=0 else '#EF4444'};">({btc_chg:+.2f}%)</small></span>
+</div>
+</div>
+</div>""", unsafe_allow_html=True)
 
 col_search, _ = st.columns([2.0, 3.0])
 with col_search:
@@ -647,27 +639,25 @@ if res:
         st.markdown(f"<h3 style='color: #F8FAFC; margin-bottom: 5px;'>[{res['ticker']}] {res['company_name']}</h3>", unsafe_allow_html=True)
     
     with col_btn:
-        st.markdown(textwrap.dedent("""
-            <div style="display: flex; justify-content: flex-end; align-items: center; height: 100%; padding-top: 5px;">
-                <a href="https://earnings.kr/" target="_blank" style="text-decoration: none;">
-                    <div style="
-                        background-color: #121824; 
-                        padding: 6px 14px 6px 12px; 
-                        border-radius: 20px; 
-                        border: 1px solid #1E293B; 
-                        display: inline-flex; 
-                        align-items: center; 
-                        gap: 8px;
-                        cursor: pointer;
-                    ">
-                        <span style="font-size: 15px; line-height: 1;">📢</span>
-                        <span style="color: #F8FAFC; font-size: 13px; font-weight: 600; letter-spacing: -0.3px;">
-                            실적발표 보러가기
-                        </span>
-                    </div>
-                </a>
-            </div>
-        """), unsafe_allow_html=True)
+        st.markdown("""<div style="display: flex; justify-content: flex-end; align-items: center; height: 100%; padding-top: 5px;">
+<a href="https://earnings.kr/" target="_blank" style="text-decoration: none;">
+<div style="
+background-color: #121824; 
+padding: 6px 14px 6px 12px; 
+border-radius: 20px; 
+border: 1px solid #1E293B; 
+display: inline-flex; 
+align-items: center; 
+gap: 8px;
+cursor: pointer;
+">
+<span style="font-size: 15px; line-height: 1;">📢</span>
+<span style="color: #F8FAFC; font-size: 13px; font-weight: 600; letter-spacing: -0.3px;">
+실적발표 보러가기
+</span>
+</div>
+</a>
+</div>""", unsafe_allow_html=True)
     
     score = res['score']
     
@@ -721,13 +711,11 @@ if res:
         tf_15m_bg = "#1E293B" if current_tf == "15M" else "#121824"
         tf_15m_color = "#00E676" if current_tf == "15M" else "#94A3B8"
 
-        tf_html = f"""
-        <div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 6px;">
-            <button onclick="window.parent.location.search = '?q={res['ticker']}&tf=1D'" style="background-color: {tf_1d_bg}; color: {tf_1d_color}; border: 1px solid #1E293B; border-radius: 6px; padding: 6px 10px; font-weight: 700; font-size: 12px; cursor: pointer;">1D</button>
-            <button onclick="window.parent.location.search = '?q={res['ticker']}&tf=1H'" style="background-color: {tf_1h_bg}; color: {tf_1h_color}; border: 1px solid #1E293B; border-radius: 6px; padding: 6px 10px; font-weight: 700; font-size: 12px; cursor: pointer;">1H</button>
-            <button onclick="window.parent.location.search = '?q={res['ticker']}&tf=15M'" style="background-color: {tf_15m_bg}; color: {tf_15m_color}; border: 1px solid #1E293B; border-radius: 6px; padding: 6px 10px; font-weight: 700; font-size: 12px; cursor: pointer;">15M</button>
-        </div>
-        """
+        tf_html = f"""<div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 6px;">
+<button onclick="window.parent.location.search = '?q={res['ticker']}&tf=1D'" style="background-color: {tf_1d_bg}; color: {tf_1d_color}; border: 1px solid #1E293B; border-radius: 6px; padding: 6px 10px; font-weight: 700; font-size: 12px; cursor: pointer;">1D</button>
+<button onclick="window.parent.location.search = '?q={res['ticker']}&tf=1H'" style="background-color: {tf_1h_bg}; color: {tf_1h_color}; border: 1px solid #1E293B; border-radius: 6px; padding: 6px 10px; font-weight: 700; font-size: 12px; cursor: pointer;">1H</button>
+<button onclick="window.parent.location.search = '?q={res['ticker']}&tf=15M'" style="background-color: {tf_15m_bg}; color: {tf_15m_color}; border: 1px solid #1E293B; border-radius: 6px; padding: 6px 10px; font-weight: 700; font-size: 12px; cursor: pointer;">15M</button>
+</div>"""
         components.html(tf_html, height=45)
     
     fig, ax = plt.subplots(figsize=(14, 4.5), facecolor='#0B0E14')
