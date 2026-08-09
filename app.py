@@ -20,29 +20,50 @@ st.set_page_config(
     layout="wide"
 )
 
-# 🎨 다크 테마 및 입력창 스타일 CSS 커스텀 (검색창 빨간 테두리 제거 및 박스 디자인 적용 완료)
+# 🎨 다크 테마 및 입력창 스타일 CSS 커스텀 (검색창 빨간 테두리 원천 차단)
 st.markdown("""
     <style>
     .stApp { background-color: #0B0E14 !important; color: #E0E0E0 !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     
-    /* 검색창 빨간 테두리 제거 및 다크 테마 박스 디자인 적용 */
-    div[data-testid="stSearchbox"] > div {
+    /* 검색창 외부 컨테이너 및 내부 빨간 테두리 강제 제거 */
+    div[data-testid="stSearchbox"], 
+    div[data-testid="stSearchbox"] > div,
+    div[data-testid="stSearchbox"] div[data-baseweb="input"],
+    div[data-testid="stSearchbox"] input {
         background-color: #121824 !important;
+        border-color: #1E293B !important;
+        box-shadow: none !important;
+    }
+
+    /* 검색창 감싸는 메인 박스 디자인 */
+    div[data-testid="stSearchbox"] > div {
         border: 1px solid #1E293B !important;
         border-radius: 10px !important;
         color: #F8FAFC !important;
     }
-    div[data-testid="stSearchbox"] > div:focus-within {
+    
+    /* 포커스 시 빨간 테두리 대신 초록색(토스 포인트) 테두리 적용 */
+    div[data-testid="stSearchbox"] > div:focus-within,
+    div[data-testid="stSearchbox"] div[data-baseweb="input"]:focus-within {
         border: 1px solid #00E676 !important;
         box-shadow: 0 0 0 1px #00E676 !important;
     }
+
+    /* 드롭다운 리스트 배경 및 테두리 */
     div[data-testid="stSearchbox"] ul {
         background-color: #121824 !important;
         border: 1px solid #1E293B !important;
         border-radius: 0 0 10px 10px !important;
         color: #E0E0E0 !important;
     }
-    div[data-testid="stSearchbox"] li[aria-selected="true"] {
+    
+    div[data-testid="stSearchbox"] li {
+        background-color: #121824 !important;
+        color: #E0E0E0 !important;
+    }
+
+    div[data-testid="stSearchbox"] li[aria-selected="true"],
+    div[data-testid="stSearchbox"] li:hover {
         background-color: #1E293B !important;
         color: #00E676 !important;
     }
@@ -265,19 +286,18 @@ class QuantEngine:
             bt_ret, bt_win, bt_mdd = QuantEngine.run_backtest(ticker_symbol)
 
             score = 40 
-            
             if len(close) >= 200 and curr_price > ema20.iloc[-1] and ema20.iloc[-1] > ema50.iloc[-1] and ema50.iloc[-1] > ema200.iloc[-1]:
                 score += 25
             elif curr_price > ema20.iloc[-1]:
                 score += 5
             else:
-                score -= 20 
+                score -= 20
 
             if 45 <= rsi <= 60: 
                 score += 20
-            elif 60 < rsi <= 70: 
+            elif 60 < rsi <= 70:
                 score += 10
-            elif rsi > 70 or rsi < 35: 
+            elif rsi > 70 or rsi < 35:
                 score -= 25
 
             avg_volume_20 = volume.tail(20).mean()
@@ -289,7 +309,7 @@ class QuantEngine:
             disparity = ((curr_price - ema20.iloc[-1]) / ema20.iloc[-1]) * 100
             if disparity > 10:
                 score -= 20
-            elif disparity < -5: 
+            elif disparity < -5:
                 score -= 10
 
             score = max(0, min(100, score))
