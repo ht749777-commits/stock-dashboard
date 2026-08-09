@@ -15,8 +15,8 @@ from streamlit_searchbox import st_searchbox
 
 # 페이지 설정 (반응형 와이드 레이아웃)
 st.set_page_config(
-    page_title="Professional Stock Dashboard",
-    page_icon="📊",
+    page_title="QuantPulse",
+    page_icon="⚡",
     layout="wide"
 )
 
@@ -304,23 +304,41 @@ if "tf" in query_params:
     st.session_state['timeframe'] = query_params["tf"].upper()
 
 # ── [우측 상단 팝오버 메뉴 영역] ──
-col_header_main, col_popover = st.columns([8, 1])
+_, col_popover = st.columns([10, 1])
 with col_popover:
     with st.popover("⚙️ 메뉴"):
-        st.markdown("**네비게이션**")
-        if st.button("app 홈", use_container_width=True):
+        st.markdown("**QuantPulse 메뉴**")
+        if st.button("홈 대시보드", use_container_width=True):
             pass
-        if st.button("Watchlist (관심종목)", use_container_width=True):
+        if st.button("관심종목 (Watchlist)", use_container_width=True):
             pass
+
+# ── [화면 중앙 로고/배너 영역 (OP.GG 스타일)] ──
+col_b1, col_b2, col_b3 = st.columns([1, 4, 1])
+with col_b2:
+    st.markdown("""
+        <div style="
+            background: linear-gradient(135deg, #121824 0%, #1E293B 100%);
+            border: 2px solid #00E676;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 8px 16px rgba(0, 230, 118, 0.15);
+            margin-bottom: 20px;
+        ">
+            <h1 style="color: #00E676; margin: 0; font-size: 32px; font-weight: 900; letter-spacing: 2px;">⚡ QUANT PULSE</h1>
+            <p style="color: #94A3B8; margin: 5px 0 0 0; font-size: 13px; font-weight: 600;">Professional Stock Quant & Market Intelligence Platform</p>
+        </div>
+    """, unsafe_allow_html=True)
 
 st.markdown(f"""
     <div class="dashboard-header">
-        <span style="color: #00E676; font-weight: 900; font-size: 16px;">📊 Stock Dashboard</span>
-        <span style="color: #94A3B8; font-size: 12px; margin-left: 10px;">Overview | 나스닥 선물: {QuantEngine.get_nasdaq_futures()}</span>
+        <span style="color: #00E676; font-weight: 900; font-size: 16px;">📊 Market Overview</span>
+        <span style="color: #94A3B8; font-size: 12px; margin-left: 10px;">나스닥 선물: {QuantEngine.get_nasdaq_futures()}</span>
     </div>
 """, unsafe_allow_html=True)
 
-col_search, col_dummy = st.columns([2.0, 3.0])
+col_search, _ = st.columns([2.0, 3.0])
 with col_search:
     selected_ticker_result = st_searchbox(
         QuantEngine.search_stock_suggestions,
