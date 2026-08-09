@@ -99,7 +99,7 @@ st.markdown("""
 
 class QuantEngine:
     FINANCIAL_DICT = {
-        "bullish": "강세장인", "bearish": "약세장인", "bull": "황소(강세)", "bear": "곰(약세)",
+        "bullish": "강세(매수)", "bearish": "약세(매도)", "bull": "황소(강세)", "bear": "곰(약세)",
         "short squeeze": "숏 스퀴즈", "short interest": "공매도 잔고", "earnings": "실적 발표",
         "guidance": "가이던스", "rally": "랠리", "plummet": "폭락", "surge": "급등",
         "soar": "폭등", "dip": "조정", "buy the dip": "저가 매수", "market cap": "시가총액"
@@ -178,7 +178,6 @@ class QuantEngine:
         """정확도 높은 구글 영문 뉴스 검색"""
         news_list = []
         try:
-            # 주식 뉴스 전문성 유지를 위한 쿼리 강화
             query = urllib.parse.quote(f'"{ticker_symbol}" stock OR shares OR earnings OR SEC')
             rss_url = f"https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=US:en&t={int(time.time())}"
             feed = feedparser.parse(rss_url)
@@ -191,7 +190,6 @@ class QuantEngine:
                     if dt_kst < three_days_ago: continue
                 
                 raw_title = entry.get('title', 'No Title')
-                # 출처(예: - Reuters) 제거 후 제목만 번역
                 title_clean = raw_title.rsplit('-', 1)[0].strip() if '-' in raw_title else raw_title
                 title = QuantEngine.professional_translate(title_clean)
                 
@@ -211,48 +209,90 @@ class QuantEngine:
         return news_list if news_list else [(f"[{ticker_symbol}] 최근 실시간 뉴스가 없습니다.", "", "방금 전", "#")]
 
     @staticmethod
-    def get_social_gossip(ticker_symbol: str):
-        """X(트위터) 및 레딧(Reddit) 실시간 게시글 정밀 수집"""
-        social_list = []
+    def get_stocktwits_posts(ticker_symbol: str):
+        """StockTwits 공식 무료 API를 활용한 실시간 개미 반응 수집"""
+        posts = []
         try:
-            # X(트위터) 및 레딧 타겟 검색 쿼리
-            query = urllib.parse.quote(f'"{ticker_symbol}" (site:reddit.com OR site:x.com OR site:twitter.com) (stock OR buy OR sell OR rumor OR catalyst)')
-            rss_url = f"https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=US:en&t={int(time.time())}"
-            feed = feedparser.parse(rss_url)
-            four_days_ago = datetime.now(timezone(timedelta(hours=9))) - timedelta(days=4)
+            url = f"https://api.stocktwits.com/api/2/streams/symbol/{ticker_symbol}.json"
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=3) as response:
+                data = json.loads(response.read().decode('utf-8'))
+                messages = data.get('messages', [])
+                
+                for msg in messages[:6]:
+                    body = msg.get('body', '')
+                    user_info = msg.get('user', {})
+                    username = user_info.get('username', 'User')
+                    created_at_raw = msg.get('created_at', '')
+                    
+                    # 날짜 가공
+                    time_str = "방금 전"
+                    if created_at_raw:
+                        try:
+                            dt = datetime.strptime(created_at_raw, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+                            time_str = dt.astimezone(timezone(timedelta(hours=9))).strftime("%m/%d %H:%M")
+                        except:
+                            time_str = created_at_raw[:10]
 
-            for entry in feed.entries:
-                pub_parsed = entry.get('published_parsed')
-                if pub_parsed:
-                    dt_kst = datetime(*pub_parsed[:6], tzinfo=timezone.utc).astimezone(timezone(timedelta(hours=9)))
-                    if dt_kst < four_days_ago: continue
+                    # 감정 분석 태그 (Bullish / Bearish)
+                    sentiment_obj = msg.get('entities', {}).get('sentiment')
+                    sentiment_tag = ""
+                    if sentiment_obj and sentiment_obj.get('basic'):
+                        s_val = sentiment_obj.get('basic').upper()
+                        sentiment_tag = f" 🟢 [{s_val}]" if s_val == "BULLISH" else f" 🔴 [{s_val}]"
 
-                raw_title = entry.get('title', 'Social Discussion')
-                # 레딧 / X 출처 분리 및 정제
-                source_tag = "[Reddit/X]"
-                if "reddit.com" in entry.get('link', '').lower():
-                    source_tag = "[Reddit]"
-                elif "x.com" in entry.get('link', '').lower() or "twitter.com" in entry.get('link', '').lower():
-                    source_tag = "[X/Twitter]"
+                    title = f"💬 [StockTwits] @{username}{sentiment_tag}"
+                    translated_body = QuantEngine.professional_translate(body)
+                    link = f"https://stocktwits.com/symbol/{ticker_symbol}"
 
-                title_clean = raw_title.rsplit('-', 1)[0].strip() if '-' in raw_title else raw_title
-                translated_title = QuantEngine.professional_translate(title_clean)
-                title = f"{source_tag} {translated_title}"
-
-                summary_raw = entry.get('summary', '') or entry.get('description', '')
-                summary_clean = re.sub(r'<[^>]*>', '', summary_raw)
-                translated_summary = QuantEngine.professional_translate(summary_clean)
-
-                social_list.append((
-                    title, 
-                    (translated_summary[:120] + "...") if len(translated_summary) > 120 else translated_summary, 
-                    QuantEngine.convert_to_kst_string(pub_parsed), 
-                    entry.get('link', '#')
-                ))
-                if len(social_list) >= 5: break
+                    posts.append((
+                        title,
+                        translated_body,
+                        time_str,
+                        link
+                    ))
         except:
             pass
-        return social_list if social_list else [(f"[{ticker_symbol}] 최근 X 및 레딧 찌라시/소셜 언급이 없습니다.", "", "방금 전", "#")]
+        return posts
+
+    @staticmethod
+    def get_social_gossip(ticker_symbol: str):
+        """StockTwits + 레딧/X 연관 소셜 반응 수집"""
+        # 1. StockTwits 데이터 수집
+        social_list = QuantEngine.get_stocktwits_posts(ticker_symbol)
+        
+        # 2. 결과가 적을 경우 Google RSS 기반 레딧/X 데이터 보완
+        if len(social_list) < 5:
+            try:
+                query = urllib.parse.quote(f'"{ticker_symbol}" (site:reddit.com OR site:x.com OR site:twitter.com) (stock OR buy OR sell OR rumor)')
+                rss_url = f"https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=US:en&t={int(time.time())}"
+                feed = feedparser.parse(rss_url)
+
+                for entry in feed.entries:
+                    raw_title = entry.get('title', 'Social Discussion')
+                    source_tag = "[Reddit]" if "reddit.com" in entry.get('link', '').lower() else "[X/Twitter]"
+                    
+                    title_clean = raw_title.rsplit('-', 1)[0].strip() if '-' in raw_title else raw_title
+                    translated_title = QuantEngine.professional_translate(title_clean)
+                    title = f"{source_tag} {translated_title}"
+
+                    summary_raw = entry.get('summary', '') or entry.get('description', '')
+                    summary_clean = re.sub(r'<[^>]*>', '', summary_raw)
+                    translated_summary = QuantEngine.professional_translate(summary_clean)
+
+                    pub_parsed = entry.get('published_parsed')
+
+                    social_list.append((
+                        title, 
+                        (translated_summary[:120] + "...") if len(translated_summary) > 120 else translated_summary, 
+                        QuantEngine.convert_to_kst_string(pub_parsed), 
+                        entry.get('link', '#')
+                    ))
+                    if len(social_list) >= 6: break
+            except:
+                pass
+
+        return social_list if social_list else [(f"[{ticker_symbol}] 최근 실시간 소셜 언급이 없습니다.", "", "방금 전", "#")]
 
     @staticmethod
     def run_backtest(ticker_symbol: str):
@@ -511,7 +551,7 @@ if res:
     fig.tight_layout()
     st.pyplot(fig)
 
-    tab_news, tab_gossip = st.tabs(["📰 구글 영문 뉴스", "💬 X & 레딧 찌라시"])
+    tab_news, tab_gossip = st.tabs(["📰 구글 영문 뉴스", "💬 StockTwits & 소셜 찌라시"])
     
     with tab_news:
         news = QuantEngine.get_google_news(res['ticker'])
@@ -530,7 +570,7 @@ if res:
         for title, summary, pub, link in gossip:
             st.markdown(
                 f"<div class='news-card'>"
-                f"💬 <a href='{link}' target='_blank' style='color: #00E676; font-weight: 700; text-decoration: none; font-size: 13px;'>{title}</a><br>"
+                f"<a href='{link}' target='_blank' style='color: #00E676; font-weight: 700; text-decoration: none; font-size: 13px;'>{title}</a><br>"
                 f"<span style='color: #94A3B8; font-size: 11px;'>⏱ {pub}</span><br>"
                 f"<span style='color: #CBD5E1; font-size: 12px;'>{summary}</span>"
                 f"</div>",
