@@ -16,7 +16,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# 🎨 다크 테마 CSS
+# 🎨 다크 테마 및 드롭다운 스타일 CSS
 st.markdown("""
     <style>
     .stApp { background-color: #0B0E14 !important; color: #E0E0E0 !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
@@ -46,6 +46,25 @@ st.markdown("""
         font-size: 13px !important;
     }
 
+    /* 검색 결과 드롭다운 버튼 스타일링 최적화 */
+    div.stButton > button {
+        width: 100% !important;
+        background-color: #121824 !important;
+        color: #F8FAFC !important;
+        border: 1px solid #1E293B !important;
+        border-radius: 6px !important;
+        padding: 10px 14px !important;
+        text-align: left !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        margin-bottom: 4px !important;
+    }
+    div.stButton > button:hover {
+        background-color: #1E293B !important;
+        border-color: #00E676 !important;
+        color: #00E676 !important;
+    }
+
     div[data-testid="stMetric"] {
         background-color: #121824 !important;
         border: 1px solid #1E293B !important;
@@ -67,10 +86,6 @@ st.markdown("""
         font-weight: 800 !important;
         font-size: 17px !important;
     }
-    
-    .stTabs [data-baseweb="tab-list"] { gap: 6px; background-color: transparent; }
-    .stTabs [data-baseweb="tab"] { background-color: #121824; border-radius: 6px; color: #94A3B8; border: 1px solid #1E293B; padding: 6px 12px; font-size: 13px; }
-    .stTabs [aria-selected="true"] { background-color: #1E293B !important; color: #00E676 !important; font-weight: bold; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -192,13 +207,14 @@ col_search, col_dummy = st.columns([2.0, 3.0])
 with col_search:
     search_input = st.text_input("티커 검색", value=current_sel, placeholder="예: AAPL, TSLA, ASTS...")
     
-    if search_input:
+    if search_input and search_input.strip().upper() != current_sel:
         suggestions = get_search_suggestions(search_input)
         if suggestions:
             for item in suggestions:
                 sym = item["symbol"]
                 name = item["name"]
-                if st.button(f"{sym} ({name})", key=f"btn_{sym}"):
+                ex = item["exchange"]
+                if st.button(f"📌 {sym}  |  {name}  ({ex})", key=f"btn_{sym}"):
                     st.session_state['selected_ticker'] = sym
                     st.query_params["q"] = sym
                     st.rerun()
