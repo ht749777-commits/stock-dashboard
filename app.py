@@ -303,6 +303,16 @@ if "q" in query_params:
 if "tf" in query_params:
     st.session_state['timeframe'] = query_params["tf"].upper()
 
+# ── [우측 상단 팝오버 메뉴 영역] ──
+col_header_main, col_popover = st.columns([8, 1])
+with col_popover:
+    with st.popover("⚙️ 메뉴"):
+        st.markdown("**네비게이션**")
+        if st.button("app 홈", use_container_width=True):
+            pass
+        if st.button("Watchlist (관심종목)", use_container_width=True):
+            pass
+
 st.markdown(f"""
     <div class="dashboard-header">
         <span style="color: #00E676; font-weight: 900; font-size: 16px;">📊 Stock Dashboard</span>
@@ -326,7 +336,6 @@ with col_search:
 res = QuantEngine.fetch_market_data(st.session_state['selected_ticker'], st.session_state['timeframe'])
 
 if res:
-    # ── [수정] 종목명과 우측 끝 실적발표캘린더 버튼 레이아웃 ──
     col_title, col_btn = st.columns([3.0, 1.0])
     with col_title:
         st.markdown(f"<h3 style='color: #F8FAFC; margin-bottom: 5px;'>[{res['ticker']}] {res['company_name']}</h3>", unsafe_allow_html=True)
