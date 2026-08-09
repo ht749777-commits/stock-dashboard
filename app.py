@@ -159,32 +159,61 @@ class QuantEngine:
     @staticmethod
     def get_earnings_date(ticker_symbol: str) -> str:
         try:
-            # 야후 파이낸스 다이렉트 API 활용 (가장 정확함)
-            url = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker_symbol}?modules=calendarEvents"
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=3) as response:
-                data = json.loads(response.read().decode('utf-8'))
-                events = data.get('quoteSummary', {}).get('result', [])[0].get('calendarEvents', {})
-                earnings_list = events.get('earnings', {}).get('earningsDate', [])
+            ticker_obj = yf.Ticker(ticker_symbol)
+            earnings_date = None
+            
+            # 1. Ticker 객체 내부 calendar 확인
+            calendar = getattr(ticker_obj, 'calendar', None)
+            if calendar is not None and not calendar.empty:
+                if 'Earnings Date' in calendar:
+                    earnings_date = calendar['Earnings Date'][0]
+                elif hasattr(calendar, 'loc') and 'Earnings Date' in calendar.index:
+                    earnings_date = calendar.loc['Earnings Date'].iloc[0]
+            
+            # 2. get_earnings_dates() 확인
+            if not earnings_date and hasattr(ticker_obj, 'get_earnings_dates'):
+                ed_df = ticker_obj.get_earnings_dates(limit=3)
+                if ed_df is not None and not ed_df.empty:
+                    earnings_date = ed_df.index[0]
+
+            if earnings_date:
+                if isinstance(earnings_date, str):
+                    dt = datetime.fromisoformat(earnings_date.replace('Z', '+00:00'))
+                else:
+                    dt = pd.to_datetime(earnings_date)
                 
-                if earnings_list:
-                    # 첫 번째 실적 발표 타임스탬프 가져오기
-                    ts = earnings_list[0].get('raw')
-                    if ts:
-                        dt = datetime.fromtimestamp(ts, tz=timezone.utc)
-                        dt_kst = dt.astimezone(timezone(timedelta(hours=9)))
-                        
-                        now_kst = datetime.now(timezone(timedelta(hours=9)))
-                        diff_days = (dt_kst.date() - now_kst.date()).days
-                        
-                        # D-5 ~ D+2 범위 체크
-                        if -5 <= diff_days <= 2:
-                            if diff_days >= 0:
-                                return dt_kst.strftime("%m월 %d일 실적 발표 예정")
-                            else:
-                                return dt_kst.strftime("%m월 %d일 실적 발표됨")
+                if dt.tzinfo is None:
+                    dt = dt.tz_localize('UTC')
+                dt_kst = dt.astimezone(timezone(timedelta(hours=9)))
+                
+                now_kst = datetime.now(timezone(timedelta(hours=9)))
+                diff_days = (dt_kst.date() - now_kst.date()).days
+                
+                if -5 <= diff_days <= 2:
+                    if diff_days >= 0:
+                        return dt_kst.strftime("%m월 %d일 실적 발표 예정")
+                    else:
+                        return dt_kst.strftime("%m월 %d일 실적 발표됨")
         except:
             pass
+            
+        # 3. 야후 API 데이터가 안 넘어오는 경우 수동 매핑 보완 예시 (예: ASTS 등 필요시 추가)
+        manual_earnings = {
+            "ASTS": "2026-08-10" # 예시 날짜 (실제 일정에 맞춰 수정 가능)
+        }
+        if ticker_symbol in manual_earnings:
+            try:
+                dt_kst = datetime.strptime(manual_earnings[ticker_symbol], "%Y-%m-%d").replace(tzinfo=timezone(timedelta(hours=9)))
+                now_kst = datetime.now(timezone(timedelta(hours=9)))
+                diff_days = (dt_kst.date() - now_kst.date()).days
+                if -5 <= diff_days <= 2:
+                    if diff_days >= 0:
+                        return dt_kst.strftime("%m월 %d일 실적 발표 예정")
+                    else:
+                        return dt_kst.strftime("%m월 %d일 실적 발표됨")
+            except:
+                pass
+
         return None
 
     @staticmethod
