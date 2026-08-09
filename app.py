@@ -162,9 +162,18 @@ def fast_market_data(ticker_symbol: str, timeframe: str = "1D"):
         bt_win = float((strategy_ret[strategy_ret != 0] > 0).mean() * 100) if len(strategy_ret[strategy_ret != 0]) > 0 else 64.3
         bt_mdd = float(((1 + strategy_ret).cumprod() / (1 + strategy_ret).cumprod().cummax() - 1).min() * 100)
 
-        score = 65
-        if curr_price > ema20.iloc[-1]: score += 15
-        if 45 <= rsi <= 65: score += 20
+        # 🔍 더 엄격하고 보수적인 매수 적합도 산출 로직 적용
+        score = 50
+        if curr_price > ema20.iloc[-1]: score += 10
+        if curr_price > ema50.iloc[-1]: score += 10
+        if curr_price > ema200.iloc[-1]: score += 10
+        
+        # RSI 과매수/과매도 구간 엄격 필터링 (48 ~ 58 구간만 우대, 나머지는 감점)
+        if 48 <= rsi <= 58: 
+            score += 15
+        elif rsi > 70 or rsi < 30: 
+            score -= 15
+
         score = max(0, min(100, score))
 
         co_name = info.get('longName', ticker_symbol)
@@ -224,9 +233,18 @@ if res:
     st.markdown(f"<h3 style='color: #F8FAFC; margin-bottom: 5px;'>[{res['ticker']}] {res['company_name']}</h3>", unsafe_allow_html=True)
     
     score = res['score']
+    
+    # 🔍 수식어 제거 및 단순 의견 제시 형태로 변경
+    if score >= 75:
+        opinion_text = f"매수 적합도 : {score} / 100 점 (적극 매수 의견)"
+    elif score >= 50:
+        opinion_text = f"매수 적합도 : {score} / 100 점 (중립 관망 의견)"
+    else:
+        opinion_text = f"매수 적합도 : {score} / 100 점 (매수 보류 의견)"
+
     st.markdown(
-        f"<div style='background: linear-gradient(135deg, #F59E0B, #D97706); color: #000000; font-weight: 900; font-size: 15px; text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 12px;'>"
-        f"보수적 퀀트 매수 적합도 : {score} / 100 점"
+        f"<div style='background: linear-gradient(135deg, #334155, #1E293B); color: #F8FAFC; font-weight: 700; font-size: 15px; text-align: center; padding: 10px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 12px;'>"
+        f"{opinion_text}"
         f"</div>",
         unsafe_allow_html=True
     )
@@ -244,9 +262,7 @@ if res:
     col8.metric("최대 낙폭", f"{res['bt_mdd']:.1f}%")
 
     st.markdown("<br>", unsafe_allow_html=True)
-    status_text = "🚀 STRONG BUY (엄격한 기준 충족 / 안전 진입 구간)" if score >= 75 else "⚠️ WAIT & DEFENSE (위험 관리 및 관망 권장 구간)"
-    st.markdown(f"<p style='color: #00E676; font-weight: bold; font-size: 14px; margin-bottom: 15px;'>{status_text}</p>", unsafe_allow_html=True)
-
+    
     c_title, c_tf_label, b1, b2, b3 = st.columns([2.5, 1.0, 0.5, 0.5, 0.5])
     with c_title:
         st.markdown("<h4 style='color: #94A3B8; font-size: 14px; margin-top: 12px;'>📈 Technical Chart & MA</h4>", unsafe_allow_html=True)
