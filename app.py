@@ -6,6 +6,7 @@ import json
 import re
 import time
 import base64
+import textwrap
 from datetime import datetime, timedelta, timezone
 import feedparser
 import pandas as pd
@@ -33,7 +34,7 @@ st.set_page_config(
 )
 
 # 🎨 다크 테마 및 롤링 슬롯 + 호버 툴팁 CSS
-st.markdown("""
+st.markdown(textwrap.dedent("""
     <style>
     .stApp { background-color: #0B0E14 !important; color: #E0E0E0 !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     
@@ -197,7 +198,7 @@ st.markdown("""
     .stTabs [data-baseweb="tab"] { background-color: #121824; border-radius: 6px; color: #94A3B8; border: 1px solid #1E293B; padding: 6px 12px; font-size: 13px; }
     .stTabs [aria-selected="true"] { background-color: #1E293B !important; color: #00E676 !important; font-weight: bold; }
     </style>
-""", unsafe_allow_html=True)
+"""), unsafe_allow_html=True)
 
 class QuantEngine:
     FINANCIAL_DICT = {
@@ -545,7 +546,7 @@ with col_b2:
             </div>
         """, unsafe_allow_html=True)
 
-# ── [Market Overview 영역: 3초 슬롯 롤링 + 호버 시에만 툴팁 팝업] ──
+# ── [Market Overview 영역] ──
 market_data = QuantEngine.get_market_overview_data()
 
 nq_val, nq_chg = market_data["NQ"]
@@ -555,7 +556,7 @@ vix_val, vix_chg = market_data["VIX"]
 tnx_val, tnx_chg = market_data["TNX"]
 btc_val, btc_chg = market_data["BTC"]
 
-st.markdown(f"""
+st.markdown(textwrap.dedent(f"""
     <div class="market-overview-container">
         <div class="market-title-badge">📊 Market Overview</div>
         
@@ -623,7 +624,7 @@ st.markdown(f"""
             </div>
         </div>
     </div>
-""", unsafe_allow_html=True)
+"""), unsafe_allow_html=True)
 
 col_search, _ = st.columns([2.0, 3.0])
 with col_search:
@@ -646,7 +647,7 @@ if res:
         st.markdown(f"<h3 style='color: #F8FAFC; margin-bottom: 5px;'>[{res['ticker']}] {res['company_name']}</h3>", unsafe_allow_html=True)
     
     with col_btn:
-        st.markdown(f"""
+        st.markdown(textwrap.dedent("""
             <div style="display: flex; justify-content: flex-end; align-items: center; height: 100%; padding-top: 5px;">
                 <a href="https://earnings.kr/" target="_blank" style="text-decoration: none;">
                     <div style="
@@ -666,7 +667,7 @@ if res:
                     </div>
                 </a>
             </div>
-        """, unsafe_allow_html=True)
+        """), unsafe_allow_html=True)
     
     score = res['score']
     
