@@ -6,11 +6,9 @@ import json
 import re
 import time
 import base64
-import textwrap
 from datetime import datetime, timedelta, timezone
 import feedparser
 import pandas as pd
-import numpy as np
 import yfinance as yf
 import matplotlib.pyplot as plt
 from streamlit_searchbox import st_searchbox
@@ -429,7 +427,7 @@ margin-bottom: 20px;
 <h1 style="color: #FF2A2A; margin: 0; font-size: 32px; font-weight: 900; letter-spacing: 2px;">TAURUS LAB</h1>
 </div>""", unsafe_allow_html=True)
 
-# ── [Market Overview 영역 (마우스 오버 시 전체 지표 목록이 드롭다운으로 펼쳐지는 컴포넌트)] ──
+# ── [Market Overview 영역 (슬롯머신 롤링 및 절대위치 드롭다운 컴포넌트)] ──
 market_data = QuantEngine.get_market_overview_data()
 
 nq_val, nq_chg = market_data["NQ"]
@@ -448,6 +446,11 @@ ticker_component_html = f"""
         margin: 0;
         background-color: transparent;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        overflow: visible;
+    }}
+    .market-overview-wrapper {{
+        position: relative;
+        width: 100%;
     }}
     .market-overview-container {{
         position: relative;
@@ -491,7 +494,7 @@ ticker_component_html = f"""
         list-style: none;
         position: absolute;
         width: 100%;
-        animation: slotRoll 15s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        animation: slotRoll 18s cubic-bezier(0.4, 0, 0.2, 1) infinite;
     }}
     .market-overview-container:hover .ticker-slider-list {{
         animation-play-state: paused;
@@ -503,11 +506,26 @@ ticker_component_html = f"""
         color: #94A3B8;
         white-space: nowrap;
     }}
-    /* 마우스 올릴 때 펼쳐지는 드롭다운 패널 스타일 */
+    @keyframes slotRoll {{
+        0% {{ top: 0px; }}
+        12% {{ top: 0px; }}
+        16% {{ top: -24px; }}
+        28% {{ top: -24px; }}
+        32% {{ top: -48px; }}
+        44% {{ top: -48px; }}
+        48% {{ top: -72px; }}
+        60% {{ top: -72px; }}
+        64% {{ top: -96px; }}
+        76% {{ top: -96px; }}
+        80% {{ top: -120px; }}
+        92% {{ top: -120px; }}
+        100% {{ top: -144px; }}
+    }}
+    /* 마우스 올릴 때 아래 공간을 차지하지 않고 위로 떠오르는(absolute) 드롭다운 패널 */
     .dropdown-panel {{
         display: none;
         position: absolute;
-        top: 50px;
+        top: 52px;
         left: 0;
         width: 100%;
         background-color: #121824;
@@ -515,8 +533,8 @@ ticker_component_html = f"""
         border-radius: 10px;
         padding: 12px 18px;
         box-sizing: border-box;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-        z-index: 999;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.7);
+        z-index: 9999;
     }}
     .market-overview-container:hover .dropdown-panel {{
         display: block;
@@ -543,48 +561,50 @@ ticker_component_html = f"""
 </style>
 </head>
 <body>
-<div class="market-overview-container">
-    <div class="market-bar">
-        <div class="market-title-badge">📊 Market Overview <span style="font-size:11px; color:#64748B; margin-left:8px; font-weight:normal;">(마우스 오버시 전체보기)</span></div>
-        <div class="ticker-slider-window">
-            <ul class="ticker-slider-list">
-                <li class="ticker-item">나스닥 100 선물: <b style="color:#F8FAFC;">{nq_val:,.2f}</b> <span style="color:{'#00E676' if nq_chg>=0 else '#EF4444'};">({nq_chg:+.2f}%)</span></li>
-                <li class="ticker-item">S&P 500 선물: <b style="color:#F8FAFC;">{es_val:,.2f}</b> <span style="color:{'#00E676' if es_chg>=0 else '#EF4444'};">({es_chg:+.2f}%)</span></li>
-                <li class="ticker-item">원/달러 환율: <b style="color:#F8FAFC;">₩{usd_val:,.2f}</b> <span style="color:{'#00E676' if usd_chg>=0 else '#EF4444'};">({usd_chg:+.2f}%)</span></li>
-                <li class="ticker-item">VIX (공포 지수): <b style="color:#F8FAFC;">{vix_val:,.2f}</b> <span style="color:{'#EF4444' if vix_chg>=0 else '#00E676'};">({vix_chg:+.2f}%)</span></li>
-                <li class="ticker-item">미국 10년물 국채금리: <b style="color:#F8FAFC;">{tnx_val:.2f}%</b> <span style="color:{'#00E676' if tnx_chg>=0 else '#EF4444'};">({tnx_chg:+.2f}%)</span></li>
-                <li class="ticker-item">비트코인 (BTC): <b style="color:#F8FAFC;">${btc_val:,.0f}</b> <span style="color:{'#00E676' if btc_chg>=0 else '#EF4444'};">({btc_chg:+.2f}%)</span></li>
-                <li class="ticker-item">나스닥 100 선물: <b style="color:#F8FAFC;">{nq_val:,.2f}</b> <span style="color:{'#00E676' if nq_chg>=0 else '#EF4444'};">({nq_chg:+.2f}%)</span></li>
-            </ul>
+<div class="market-overview-wrapper">
+    <div class="market-overview-container">
+        <div class="market-bar">
+            <div class="market-title-badge">📊 Market Overview <span style="font-size:11px; color:#64748B; margin-left:8px; font-weight:normal;">(마우스 오버시 전체보기)</span></div>
+            <div class="ticker-slider-window">
+                <ul class="ticker-slider-list">
+                    <li class="ticker-item">나스닥 100 선물: <b style="color:#F8FAFC;">{nq_val:,.2f}</b> <span style="color:{'#00E676' if nq_chg>=0 else '#EF4444'};">({nq_chg:+.2f}%)</span></li>
+                    <li class="ticker-item">S&P 500 선물: <b style="color:#F8FAFC;">{es_val:,.2f}</b> <span style="color:{'#00E676' if es_chg>=0 else '#EF4444'};">({es_chg:+.2f}%)</span></li>
+                    <li class="ticker-item">원/달러 환율: <b style="color:#F8FAFC;">₩{usd_val:,.2f}</b> <span style="color:{'#00E676' if usd_chg>=0 else '#EF4444'};">({usd_chg:+.2f}%)</span></li>
+                    <li class="ticker-item">VIX (공포 지수): <b style="color:#F8FAFC;">{vix_val:,.2f}</b> <span style="color:{'#EF4444' if vix_chg>=0 else '#00E676'};">({vix_chg:+.2f}%)</span></li>
+                    <li class="ticker-item">미국 10년물 국채금리: <b style="color:#F8FAFC;">{tnx_val:.2f}%</b> <span style="color:{'#00E676' if tnx_chg>=0 else '#EF4444'};">({tnx_chg:+.2f}%)</span></li>
+                    <li class="ticker-item">비트코인 (BTC): <b style="color:#F8FAFC;">${btc_val:,.0f}</b> <span style="color:{'#00E676' if btc_chg>=0 else '#EF4444'};">({btc_chg:+.2f}%)</span></li>
+                    <li class="ticker-item">나스닥 100 선물: <b style="color:#F8FAFC;">{nq_val:,.2f}</b> <span style="color:{'#00E676' if nq_chg>=0 else '#EF4444'};">({nq_chg:+.2f}%)</span></li>
+                </ul>
+            </div>
         </div>
-    </div>
-    
-    <!-- 마우스 오버 시 나타나는 전체 지표 요약 패널 -->
-    <div class="dropdown-panel">
-        <div style="color: #00E676; font-weight: 800; font-size: 13px; margin-bottom: 8px;">🔥 실시간 주요 마켓 지표 요약</div>
-        <div class="grid-row">
-            <span class="label-name">나스닥 100 선물</span>
-            <div><span class="label-val">{nq_val:,.2f}</span> <span style="color:{'#00E676' if nq_chg>=0 else '#EF4444'}; font-size:12px;">({nq_chg:+.2f}%)</span></div>
-        </div>
-        <div class="grid-row">
-            <span class="label-name">S&P 500 선물</span>
-            <div><span class="label-val">{es_val:,.2f}</span> <span style="color:{'#00E676' if es_chg>=0 else '#EF4444'}; font-size:12px;">({es_chg:+.2f}%)</span></div>
-        </div>
-        <div class="grid-row">
-            <span class="label-name">원/달러 환율</span>
-            <div><span class="label-val">₩{usd_val:,.2f}</span> <span style="color:{'#00E676' if usd_chg>=0 else '#EF4444'}; font-size:12px;">({usd_chg:+.2f}%)</span></div>
-        </div>
-        <div class="grid-row">
-            <span class="label-name">VIX (변동성 지수)</span>
-            <div><span class="label-val">{vix_val:,.2f}</span> <span style="color:{'#EF4444' if vix_chg>=0 else '#00E676'}; font-size:12px;">({vix_chg:+.2f}%)</span></div>
-        </div>
-        <div class="grid-row">
-            <span class="label-name">미국 10년물 국채금리</span>
-            <div><span class="label-val">{tnx_val:.2f}%</span> <span style="color:{'#00E676' if tnx_chg>=0 else '#EF4444'}; font-size:12px;">({tnx_chg:+.2f}%)</span></div>
-        </div>
-        <div class="grid-row">
-            <span class="label-name">비트코인 (BTC)</span>
-            <div><span class="label-val">${btc_val:,.0f}</span> <span style="color:{'#00E676' if btc_chg>=0 else '#EF4444'}; font-size:12px;">({btc_chg:+.2f}%)</span></div>
+        
+        <!-- 마우스 오버 시 절대위치로 나타나는 전체 지표 요약 패널 -->
+        <div class="dropdown-panel">
+            <div style="color: #00E676; font-weight: 800; font-size: 13px; margin-bottom: 8px;">🔥 실시간 주요 마켓 지표 요약</div>
+            <div class="grid-row">
+                <span class="label-name">나스닥 100 선물</span>
+                <div><span class="label-val">{nq_val:,.2f}</span> <span style="color:{'#00E676' if nq_chg>=0 else '#EF4444'}; font-size:12px;">({nq_chg:+.2f}%)</span></div>
+            </div>
+            <div class="grid-row">
+                <span class="label-name">S&P 500 선물</span>
+                <div><span class="label-val">{es_val:,.2f}</span> <span style="color:{'#00E676' if es_chg>=0 else '#EF4444'}; font-size:12px;">({es_chg:+.2f}%)</span></div>
+            </div>
+            <div class="grid-row">
+                <span class="label-name">원/달러 환율</span>
+                <div><span class="label-val">₩{usd_val:,.2f}</span> <span style="color:{'#00E676' if usd_chg>=0 else '#EF4444'}; font-size:12px;">({usd_chg:+.2f}%)</span></div>
+            </div>
+            <div class="grid-row">
+                <span class="label-name">VIX (변동성 지수)</span>
+                <div><span class="label-val">{vix_val:,.2f}</span> <span style="color:{'#EF4444' if vix_chg>=0 else '#00E676'}; font-size:12px;">({vix_chg:+.2f}%)</span></div>
+            </div>
+            <div class="grid-row">
+                <span class="label-name">미국 10년물 국채금리</span>
+                <div><span class="label-val">{tnx_val:.2f}%</span> <span style="color:{'#00E676' if tnx_chg>=0 else '#EF4444'}; font-size:12px;">({tnx_chg:+.2f}%)</span></div>
+            </div>
+            <div class="grid-row">
+                <span class="label-name">비트코인 (BTC)</span>
+                <div><span class="label-val">${btc_val:,.0f}</span> <span style="color:{'#00E676' if btc_chg>=0 else '#EF4444'}; font-size:12px;">({btc_chg:+.2f}%)</span></div>
+            </div>
         </div>
     </div>
 </div>
@@ -592,7 +612,7 @@ ticker_component_html = f"""
 </html>
 """
 
-components.html(ticker_component_html, height=270)
+components.html(ticker_component_html, height=65)
 st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
 
 col_search, _ = st.columns([2.0, 3.0])
