@@ -11,7 +11,6 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 import matplotlib.pyplot as plt
-from streamlit_searchbox import st_searchbox
 
 # 페이지 설정 (반응형 와이드 레이아웃)
 st.set_page_config(
@@ -20,7 +19,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# 🎨 다크 테마 및 토스 스타일 검색창 CSS (흰색 배경 및 빨간 테두리 완전 박멸)
+# 🎨 다크 테마 및 토스 스타일 입력창 CSS 커스텀
 st.markdown("""
     <style>
     .stApp { background-color: #0B0E14 !important; color: #E0E0E0 !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
@@ -33,48 +32,22 @@ st.markdown("""
         margin-bottom: 15px;
     }
 
-    /* streamlit-searchbox 전체 다크 모드 스타일 강제 적용 */
-    div[data-testid="stSearchbox"] {
-        background-color: transparent !important;
-    }
-    
-    /* 검색창 메인 박스 (흰색 배경 및 빨간 테두리 제거 후 다크톤 적용) */
-    div[data-testid="stSearchbox"] > div {
-        background-color: #121824 !important;
-        border: 1px solid #1E293B !important;
-        border-radius: 10px !important;
-        box-shadow: none !important;
-    }
-
-    /* 입력창 내부 텍스트 및 배경 */
-    div[data-testid="stSearchbox"] input {
+    /* Streamlit 입력창 완벽한 다크 테마 적용 */
+    div[data-testid="stTextInput"] input {
         background-color: #121824 !important;
         color: #F8FAFC !important;
+        border: 1px solid #1E293B !important;
+        border-radius: 10px !important;
+        padding: 12px 16px !important;
     }
-
-    /* 포커스 시 토스 초록색 테두리 적용 */
-    div[data-testid="stSearchbox"] > div:focus-within {
+    div[data-testid="stTextInput"] input:focus {
         border: 1px solid #00E676 !important;
         box-shadow: 0 0 0 1px #00E676 !important;
     }
-
-    /* 자동완성 드롭다운 목록 전체 박스 */
-    div[data-baseweb="menu"], ul[role="listbox"] {
-        background-color: #121824 !important;
-        border: 1px solid #1E293B !important;
-        border-radius: 0 0 10px 10px !important;
-    }
-
-    /* 드롭다운 개별 옵션 항목 */
-    div[data-baseweb="menu"] li, div[role="option"] {
-        background-color: #121824 !important;
-        color: #CBD5E1 !important;
-    }
-
-    /* 드롭다운 항목 마우스 호버 시 */
-    div[data-baseweb="menu"] li:hover, div[role="option"]:hover {
-        background-color: #1E293B !important;
-        color: #00E676 !important;
+    div[data-testid="stTextInput"] label {
+        color: #94A3B8 !important;
+        font-weight: 600 !important;
+        font-size: 13px !important;
     }
 
     div[data-testid="stMetric"] {
@@ -135,29 +108,6 @@ class QuantEngine:
     }
 
     @staticmethod
-    def search_stock_suggestions(search_term: str):
-        if not search_term or len(search_term.strip()) == 0:
-            return []
-        term = search_term.strip().upper()
-        try:
-            url = f"https://query2.finance.yahoo.com/v1/finance/search?q={urllib.parse.quote(term)}&quotesCount=8&newsCount=0"
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=2) as response:
-                data = json.loads(response.read().decode('utf-8'))
-                quotes = data.get('quotes', [])
-
-                suggestions = []
-                for q in quotes:
-                    symbol = q.get('symbol', '')
-                    name = q.get('shortname', q.get('longname', symbol))
-                    ex = q.get('exchange', '')
-                    display_text = f"{symbol} | {name} ({ex})"
-                    suggestions.append((display_text, symbol))
-                return suggestions
-        except:
-            return []
-
-    @staticmethod
     def professional_translate(text: str) -> str:
         if not text: return text
         try:
@@ -172,6 +122,29 @@ class QuantEngine:
                 return translated
         except:
             return text
+
+    @staticmethod
+    def search_stock_suggestions(search_term: str):
+        if not search_term or len(search_term.strip()) == 0:
+            return []
+        term = search_term.strip().upper()
+        try:
+            url = f"https://query2.finance.yahoo.com/v1/finance/search?q={urllib.parse.quote(term)}&quotesCount=6&newsCount=0"
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=2) as response:
+                data = json.loads(response.read().decode('utf-8'))
+                quotes = data.get('quotes', [])
+                suggestions = []
+                for q in quotes:
+                    symbol = q.get('symbol', '')
+                    raw_name = q.get('shortname', q.get('longname', symbol))
+                    # 회사명 한국어 번역 적용
+                    ko_name = QuantEngine.professional_translate(raw_name)
+                    ex = q.get('exchange', '')
+                    suggestions.append({"symbol": symbol, "name": ko_name, "exchange": ex})
+                return suggestions
+        except:
+            return []
 
     @staticmethod
     def convert_to_kst_string(pub_parsed) -> str:
@@ -315,8 +288,11 @@ class QuantEngine:
 
             score = max(0, min(100, score))
 
+            raw_co_name = info.get('longName', ticker_symbol)
+            ko_co_name = QuantEngine.professional_translate(raw_co_name)
+
             return {
-                "ticker": ticker_symbol, "company_name": info.get('longName', ticker_symbol),
+                "ticker": ticker_symbol, "company_name": ko_co_name,
                 "curr_price": curr_price, "price_change_p": price_change_p,
                 "ema20": ema20, "ema50": ema50, "ema200": ema200,
                 "stop_loss": round(stop_loss, 2), "take_profit": round(take_profit, 2),
@@ -344,33 +320,38 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
+# 🔍 토스증권 스타일 커스텀 검색창 및 실시간 검색어 강조 드롭다운 구현
 col_search, col_dummy = st.columns([2.0, 3.0])
 with col_search:
-    selected_ticker_result = st_searchbox(
-        QuantEngine.search_stock_suggestions,
-        placeholder="티커 검색 (예: asts)...",
-        key="stock_autocomplete_search",
-        style_overrides={
-            "control": {
-                "backgroundColor": "#121824",
-                "borderColor": "#1E293B",
-                "boxShadow": "none",
-            },
-            "menu": {
-                "backgroundColor": "#121824",
-                "borderColor": "#1E293B",
-            },
-            "option": {
-                "backgroundColor": "#121824",
-                "color": "#E0E0E0",
-            }
-        }
-    )
+    search_input = st.text_input("티커 검색", value=st.session_state['selected_ticker'], placeholder="예: asts, aapl, tsla...")
+    
+    if search_input and len(search_input.strip()) > 0:
+        suggestions = QuantEngine.search_stock_suggestions(search_input)
+        if suggestions:
+            st.markdown("""
+                <div style="background-color: #121824; border: 1px solid #1E293B; border-radius: 10px; padding: 6px; margin-top: -10px; margin-bottom: 15px; box-shadow: 0 8px 16px rgba(0,0,0,0.4);">
+            """, unsafe_allow_html=True)
+            
+            for item in suggestions:
+                sym = item["symbol"]
+                name = item["name"]
+                ex = item["exchange"]
+                
+                # 사용자가 검색한 글자만 초록색(#00E676)으로 강조 변환
+                pattern = re.compile(re.escape(search_input.strip()), re.IGNORECASE)
+                highlighted_sym = pattern.sub(lambda m: f"<span style='color: #00E676; font-weight: 900;'>{m.group(0)}</span>", sym)
+                
+                # 버튼 클릭 시 해당 종목으로 바로 전환
+                if st.button(f"{sym}  |  {name} ({ex})", key=f"sugg_{sym}", use_container_width=True):
+                    st.session_state['selected_ticker'] = sym
+                    st.query_params["q"] = sym
+                    st.rerun()
+                    
+            st.markdown("</div>", unsafe_allow_html=True)
 
-    if selected_ticker_result and selected_ticker_result != st.session_state['selected_ticker']:
-        st.session_state['selected_ticker'] = selected_ticker_result.upper()
-        st.query_params["q"] = selected_ticker_result.upper()
-        st.rerun()
+    if search_input and search_input.strip().upper() != st.session_state['selected_ticker'] and len(search_input.strip()) <= 5:
+        # 엔터나 직접 입력 시 반영
+        pass
 
 res = QuantEngine.fetch_market_data(st.session_state['selected_ticker'], st.session_state['timeframe'])
 
