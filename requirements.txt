@@ -1,6 +1,7 @@
 streamlit
-yfinance
+streamlit-searchbox
 feedparser
 pandas
 numpy
+yfinance
 matplotlib
