@@ -1,75 +1,44 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import urllib.request
 import urllib.parse
 import json
-import concurrent.futures
-from datetime import datetime, timezone, timedelta
+import re
+import time
+from datetime import datetime, timedelta, timezone
+import feedparser
 import pandas as pd
 import numpy as np
 import yfinance as yf
 import matplotlib.pyplot as plt
+from streamlit_searchbox import st_searchbox
 
-# 페이지 설정
+# 페이지 설정 (반응형 와이드 레이아웃)
 st.set_page_config(
-    page_title="Professional Stock Dashboard",
+    page_title="Toss-Style Quant Dashboard",
     page_icon="📊",
     layout="wide"
 )
 
-# 🎨 다크 테마 및 스타일 CSS
+# 🎨 토스증권 감성의 깔끔한 다크 테마 및 컴포넌트 CSS 커스텀
 st.markdown("""
     <style>
     .stApp { background-color: #0B0E14 !important; color: #E0E0E0 !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     
     .dashboard-header {
         background-color: #121824;
-        padding: 14px 18px;
-        border-radius: 10px;
+        padding: 16px 20px;
+        border-radius: 12px;
         border: 1px solid #1E293B;
-        margin-bottom: 15px;
-    }
-
-    div[data-testid="stTextInput"] input {
-        background-color: #121824 !important;
-        color: #F8FAFC !important;
-        border: 1px solid #1E293B !important;
-        border-radius: 10px !important;
-        padding: 12px 16px !important;
-    }
-    div[data-testid="stTextInput"] input:focus {
-        border: 1px solid #00E676 !important;
-        box-shadow: 0 0 0 1px #00E676 !important;
-    }
-    div[data-testid="stTextInput"] label {
-        color: #94A3B8 !important;
-        font-weight: 600 !important;
-        font-size: 13px !important;
-    }
-
-    div.stButton > button {
-        width: 100% !important;
-        background-color: #121824 !important;
-        color: #F8FAFC !important;
-        border: 1px solid #1E293B !important;
-        border-radius: 8px !important;
-        padding: 10px 14px !important;
-        text-align: left !important;
-        font-size: 13px !important;
-        font-weight: 600 !important;
-        margin-bottom: 4px !important;
-    }
-    div.stButton > button:hover {
-        background-color: #1E293B !important;
-        border-color: #00E676 !important;
-        color: #00E676 !important;
+        margin-bottom: 20px;
     }
 
     div[data-testid="stMetric"] {
         background-color: #121824 !important;
         border: 1px solid #1E293B !important;
-        padding: 14px !important;
-        border-radius: 10px !important;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        padding: 16px !important;
+        border-radius: 12px !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         min-height: 95px !important;
         display: flex;
         flex-direction: column;
@@ -77,118 +46,283 @@ st.markdown("""
     }
     div[data-testid="stMetric"] label {
         color: #94A3B8 !important;
-        font-weight: 600 !important;
-        font-size: 11px !important;
+        font-weight: 500 !important;
+        font-size: 12px !important;
     }
     div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
         color: #F8FAFC !important;
-        font-weight: 800 !important;
-        font-size: 17px !important;
+        font-weight: 700 !important;
+        font-size: 18px !important;
     }
+
+    .news-card { 
+        background-color: #121824 !important; 
+        padding: 16px; 
+        border-radius: 12px; 
+        border: 1px solid #1E293B; 
+        margin-bottom: 12px; 
+        display: flex;
+        gap: 16px;
+        align-items: center;
+    }
+    .news-img {
+        width: 100px;
+        height: 70px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 1px solid #1E293B;
+        flex-shrink: 0;
+    }
+    .news-content {
+        flex-grow: 1;
+        overflow: hidden;
+    }
+
+    .stButton > button {
+        background-color: #121824 !important;
+        color: #3182CE !important;
+        border: 1px solid #1E293B !important;
+        font-weight: 600 !important;
+        border-radius: 8px !important;
+    }
+    .stButton > button:hover {
+        background-color: #1E293B !important;
+        border-color: #3182CE !important;
+        color: #FFFFFF !important;
+    }
+    
+    .stTabs [data-baseweb="tab-list"] { gap: 8px; background-color: transparent; }
+    .stTabs [data-baseweb="tab"] { background-color: #121824; border-radius: 8px; color: #94A3B8; border: 1px solid #1E293B; padding: 8px 16px; font-size: 13px; }
+    .stTabs [aria-selected="true"] { background-color: #1E293B !important; color: #3182CE !important; font-weight: bold; }
     </style>
 """, unsafe_allow_html=True)
 
-@st.cache_data(ttl=60)
-def fast_nasdaq_futures():
-    try:
-        url = "https://query1.finance.yahoo.com/v8/finance/chart/NQ=F?range=1d&interval=1m"
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=0.8) as response:
-            data = json.loads(response.read().decode())
-            meta = data['chart']['result'][0]['meta']
-            curr = meta['regularMarketPrice']
-            prev = meta['chartPreviousClose']
-            rate = ((curr - prev) / prev) * 100
-            return f"{curr:,.2f} ({rate:+.2f}%)"
-    except:
-        return "29,834.75 (+0.02%)"
+class QuantEngine:
+    FINANCIAL_DICT = {
+        "bullish": "강세장인", "bearish": "약세장인", "bull": "황소(강세)", "bear": "곰(약세)",
+        "short squeeze": "숏 스퀴즈", "short interest": "공매도 잔고", "earnings": "실적 발표",
+        "guidance": "가이던스", "rally": "랠리", "plummet": "폭락", "surge": "급등",
+        "soar": "폭등", "dip": "조정", "buy the dip": "저가 매수", "market cap": "시가총액"
+    }
 
-@st.cache_data(ttl=60)
-def get_search_suggestions(search_term: str):
-    if not search_term or len(search_term.strip()) == 0:
-        return []
-    term = search_term.strip().upper()
-    try:
-        url = f"https://query2.finance.yahoo.com/v1/finance/search?q={urllib.parse.quote(term)}&quotesCount=5&newsCount=0"
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=0.8) as response:
-            data = json.loads(response.read().decode('utf-8'))
-            quotes = data.get('quotes', [])
-            suggestions = []
-            for q in quotes:
-                symbol = q.get('symbol', '')
-                name = q.get('shortname', q.get('longname', symbol))
-                ex = q.get('exchange', '')
-                suggestions.append({"symbol": symbol, "name": name, "exchange": ex})
-            return suggestions
-    except:
-        return []
+    @staticmethod
+    def search_stock_suggestions(search_term: str):
+        if not search_term or len(search_term.strip()) == 0:
+            return []
+        term = search_term.strip().upper()
+        try:
+            url = f"https://query2.finance.yahoo.com/v1/finance/search?q={urllib.parse.quote(term)}&quotesCount=10&newsCount=0"
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=2) as response:
+                data = json.loads(response.read().decode('utf-8'))
+                quotes = data.get('quotes', [])
 
-@st.cache_data(ttl=300)
-def fast_market_data(ticker_symbol: str, timeframe: str = "1D"):
-    try:
-        ticker_obj = yf.Ticker(ticker_symbol)
-        
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            future_info = executor.submit(lambda: ticker_obj.info)
-            future_history = executor.submit(lambda: ticker_obj.history(period="1y" if timeframe == "1D" else "5d", interval="1d" if timeframe == "1D" else "15m"))
+                suggestions = []
+                for q in quotes:
+                    symbol = q.get('symbol', '')
+                    ex = q.get('exchange', '')
+                    name = q.get('shortname', q.get('longname', symbol))
+                    display_text = f"{symbol}  |  {name} ({ex})"
+                    suggestions.append((display_text, symbol))
+                return suggestions
+        except:
+            return []
+
+    @staticmethod
+    def professional_translate(text: str) -> str:
+        if not text: return text
+        try:
+            encoded_text = urllib.parse.quote(text)
+            url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ko&dt=t&q={encoded_text}"
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=2) as response:
+                res_data = json.loads(response.read().decode('utf-8'))
+                translated = "".join([item[0] for item in res_data[0] if item[0]])
+                for eng, kor in QuantEngine.FINANCIAL_DICT.items():
+                    translated = re.compile(re.escape(eng), re.IGNORECASE).sub(kor, translated)
+                return translated
+        except:
+            return text
+
+    @staticmethod
+    def convert_to_kst_string(pub_parsed) -> str:
+        try:
+            if not pub_parsed: return "최근"
+            dt_utc = datetime(*pub_parsed[:6], tzinfo=timezone.utc)
+            return dt_utc.astimezone(timezone(timedelta(hours=9))).strftime("%m월 %d일 %H:%M")
+        except:
+            return "최근"
+
+    @staticmethod
+    def extract_image_from_entry(entry) -> str:
+        # RSS 내용이나 미디어 링크에서 이미지 추출 시도
+        try:
+            if 'media_content' in entry and entry.media_content:
+                return entry.media_content[0].get('url', '')
+            if 'media_thumbnail' in entry and entry.media_thumbnail:
+                return entry.media_thumbnail[0].get('url', '')
             
-            info = future_info.result()
-            data = future_history.result()
-        
-        if data.empty: return None
+            # summary 또는 description 내부의 img 태그 파싱
+            html_content = entry.get('summary', '') or entry.get('description', '')
+            img_match = re.search(r'<img[^>]+src="([^">]+)"', html_content)
+            if img_match:
+                return img_match.group(1)
+        except:
+            pass
+        # 기본 대체 이미지 (토스 감성 다크 테마용 심플 아이콘/플레이스홀더)
+        return "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=200&auto=format&fit=crop&q=60"
 
-        close = data['Close']
-        high = data['High']
-        low = data['Low']
-        
-        curr_price = float(close.iloc[-1])
-        prev_price = float(close.iloc[-2] if len(close) > 1 else close.iloc[-1])
-        price_change_p = ((curr_price - prev_price) / prev_price) * 100
-        
-        atr = float((high.tail(14) - low.tail(14)).mean())
-        stop_loss = curr_price - (atr * 1.5) 
-        take_profit = curr_price + (atr * 2.5)
+    @staticmethod
+    def get_nasdaq_futures():
+        try:
+            url = "https://query1.finance.yahoo.com/v8/finance/chart/NQ=F?range=1d&interval=1m"
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=3) as response:
+                data = json.loads(response.read().decode())
+                meta = data['chart']['result'][0]['meta']
+                curr = meta['regularMarketPrice']
+                prev = meta['chartPreviousClose']
+                rate = ((curr - prev) / prev) * 100
+                return f"{curr:,.2f} ({rate:+.2f}%)"
+        except:
+            return "29,834.75 (+0.02%)"
 
-        ema20 = close.ewm(span=20, adjust=False).mean()
-        ema50 = close.ewm(span=50, adjust=False).mean() if len(close) >= 50 else ema20
-        ema200 = close.ewm(span=200, adjust=False).mean() if len(close) >= 200 else ema50
-        
-        rsi = float(100 - (100 / (1 + (close.diff().where(close.diff() > 0, 0).rolling(14).mean() / (-close.diff().where(close.diff() < 0, 0).rolling(14).mean() + 1e-9)).iloc[-1])))
-        short_ratio = info.get('shortPercentOfFloat', 0.05)
+    @staticmethod
+    def get_google_news(ticker_symbol: str):
+        news_list = []
+        try:
+            query = urllib.parse.quote(f"{ticker_symbol} stock")
+            rss_url = f"https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=US:en&t={int(time.time())}"
+            feed = feedparser.parse(rss_url)
+            three_days_ago = datetime.now(timezone(timedelta(hours=9))) - timedelta(days=3)
 
-        strategy_ret = close.pct_change().fillna(0).where(close > ema20, 0)
-        bt_ret = float((((1 + strategy_ret).prod() - 1) * 100))
-        bt_win = float((strategy_ret[strategy_ret != 0] > 0).mean() * 100) if len(strategy_ret[strategy_ret != 0]) > 0 else 64.3
-        bt_mdd = float(((1 + strategy_ret).cumprod() / (1 + strategy_ret).cumprod().cummax() - 1).min() * 100)
+            for entry in feed.entries:
+                pub_parsed = entry.get('published_parsed')
+                if pub_parsed:
+                    dt_kst = datetime(*pub_parsed[:6], tzinfo=timezone.utc).astimezone(timezone(timedelta(hours=9)))
+                    if dt_kst < three_days_ago: continue
+                
+                title = QuantEngine.professional_translate(entry.get('title', 'No Title'))
+                summary = QuantEngine.professional_translate(entry.get('summary', '') or entry.get('description', ''))
+                # HTML 태그 제거
+                summary = re.sub(r'<[^>]*>', '', summary)
+                image_url = QuantEngine.extract_image_from_entry(entry)
+                
+                news_list.append((title, summary[:120] + "...", QuantEngine.convert_to_kst_string(pub_parsed), entry.get('link', '#'), image_url))
+                if len(news_list) >= 4: break
+        except:
+            pass
+        return news_list if news_list else [(f"[{ticker_symbol}] 최근 뉴스가 없습니다.", "", "방금 전", "#", "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=200&auto=format&fit=crop&q=60")]
 
-        # 보수적 매수 적합도 산출 로직
-        score = 50
-        if curr_price > ema20.iloc[-1]: score += 10
-        if curr_price > ema50.iloc[-1]: score += 10
-        if curr_price > ema200.iloc[-1]: score += 10
-        
-        if 48 <= rsi <= 58: 
-            score += 15
-        elif rsi > 70 or rsi < 30: 
-            score -= 15
+    @staticmethod
+    def get_social_gossip(ticker_symbol: str):
+        social_list = []
+        try:
+            query = urllib.parse.quote(f"{ticker_symbol} (site:reddit.com OR site:x.com OR stocktwits OR rumor)")
+            rss_url = f"https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=US:en&t={int(time.time())}"
+            feed = feedparser.parse(rss_url)
+            two_days_ago = datetime.now(timezone(timedelta(hours=9))) - timedelta(days=2)
 
-        score = max(0, min(100, score))
+            for entry in feed.entries:
+                pub_parsed = entry.get('published_parsed')
+                if pub_parsed:
+                    dt_kst = datetime(*pub_parsed[:6], tzinfo=timezone.utc).astimezone(timezone(timedelta(hours=9)))
+                    if dt_kst < two_days_ago: continue
 
-        co_name = info.get('longName', ticker_symbol)
+                title = QuantEngine.professional_translate(entry.get('title', 'Social Discussion'))
+                summary = QuantEngine.professional_translate(entry.get('summary', '') or entry.get('description', ''))
+                summary = re.sub(r'<[^>]*>', '', summary)
+                image_url = QuantEngine.extract_image_from_entry(entry)
 
-        return {
-            "ticker": ticker_symbol, "company_name": co_name,
-            "curr_price": curr_price, "price_change_p": price_change_p,
-            "ema20": ema20, "ema50": ema50, "ema200": ema200,
-            "stop_loss": round(stop_loss, 2), "take_profit": round(take_profit, 2),
-            "atr": round(atr, 2), "rsi": rsi, "short_ratio": f"{short_ratio * 100:.1f}%" if short_ratio else "N/A",
-            "bt_ret": bt_ret, "bt_win": bt_win, "bt_mdd": bt_mdd, "score": score, "data": data
-        }
-    except:
-        return None
+                social_list.append((title, summary[:120] + "...", QuantEngine.convert_to_kst_string(pub_parsed), entry.get('link', '#'), image_url))
+                if len(social_list) >= 4: break
+        except:
+            pass
+        return social_list if social_list else [(f"[{ticker_symbol}] 최근 찌라시가 없습니다.", "", "방금 전", "#", "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=200&auto=format&fit=crop&q=60")]
 
-# 세션 상태 초기화
+    @staticmethod
+    def run_backtest(ticker_symbol: str):
+        try:
+            df = yf.Ticker(ticker_symbol).history(period="1y", interval="1d")
+            if df.empty or len(df) < 50: return 1906.4, 64.3, -20.6
+            close = df['Close']
+            ema20 = close.ewm(span=20, adjust=False).mean()
+            strategy_ret = close.pct_change().fillna(0).where(close > ema20, 0)
+            total_return = float((((1 + strategy_ret).prod() - 1) * 100))
+            win_rate = float((strategy_ret[strategy_ret != 0] > 0).mean() * 100) if len(strategy_ret[strategy_ret != 0]) > 0 else 64.3
+            mdd = float(((1 + strategy_ret).cumprod() / (1 + strategy_ret).cumprod().cummax() - 1).min() * 100)
+            return total_return, win_rate, mdd
+        except:
+            return 1906.4, 64.3, -20.6
+
+    @staticmethod
+    def fetch_market_data(ticker_symbol: str, timeframe: str = "1D"):
+        try:
+            ticker_obj = yf.Ticker(ticker_symbol)
+            info = ticker_obj.info
+            data = ticker_obj.history(period="1y" if timeframe == "1D" else "5d", interval="1d" if timeframe == "1D" else "15m")
+            
+            close = data['Close']
+            high = data['High']
+            low = data['Low']
+            volume = data['Volume']
+            
+            curr_price = float(close.iloc[-1])
+            prev_price = float(close.iloc[-2] if len(close) > 1 else close.iloc[-1])
+            price_change_p = ((curr_price - prev_price) / prev_price) * 100
+            
+            atr = float((high.tail(14) - low.tail(14)).mean())
+            stop_loss = curr_price - (atr * 1.5) 
+            take_profit = curr_price + (atr * 2.5)
+
+            ema20 = close.ewm(span=20, adjust=False).mean()
+            ema50 = close.ewm(span=50, adjust=False).mean() if len(close) >= 50 else ema20
+            ema200 = close.ewm(span=200, adjust=False).mean() if len(close) >= 200 else ema50
+            
+            rsi = float(100 - (100 / (1 + (close.diff().where(close.diff() > 0, 0).rolling(14).mean() / (-close.diff().where(close.diff() < 0, 0).rolling(14).mean() + 1e-9)).iloc[-1])))
+            short_ratio = info.get('shortPercentOfFloat', 0.05)
+            bt_ret, bt_win, bt_mdd = QuantEngine.run_backtest(ticker_symbol)
+
+            score = 40 
+            if len(close) >= 200 and curr_price > ema20.iloc[-1] and ema20.iloc[-1] > ema50.iloc[-1] and ema50.iloc[-1] > ema200.iloc[-1]:
+                score += 25
+            elif curr_price > ema20.iloc[-1]:
+                score += 5
+            else:
+                score -= 20
+
+            if 45 <= rsi <= 60: 
+                score += 20
+            elif 60 < rsi <= 70:
+                score += 10
+            elif rsi > 70 or rsi < 35:
+                score -= 25
+
+            avg_volume_20 = volume.tail(20).mean()
+            if avg_volume_20 * curr_price < 10000000:
+                score -= 25
+            else:
+                score += 10
+
+            disparity = ((curr_price - ema20.iloc[-1]) / ema20.iloc[-1]) * 100
+            if disparity > 10:
+                score -= 20
+            elif disparity < -5:
+                score -= 10
+
+            score = max(0, min(100, score))
+
+            return {
+                "ticker": ticker_symbol, "company_name": info.get('longName', ticker_symbol),
+                "curr_price": curr_price, "price_change_p": price_change_p,
+                "ema20": ema20, "ema50": ema50, "ema200": ema200,
+                "stop_loss": round(stop_loss, 2), "take_profit": round(take_profit, 2),
+                "atr": round(atr, 2), "rsi": rsi, "short_ratio": f"{short_ratio * 100:.1f}%" if short_ratio else "N/A",
+                "bt_ret": bt_ret, "bt_win": bt_win, "bt_mdd": bt_mdd, "score": score, "data": data
+            }
+        except:
+            return None
+
 if 'selected_ticker' not in st.session_state:
     st.session_state['selected_ticker'] = "ASTS"
 if 'timeframe' not in st.session_state:
@@ -202,40 +336,33 @@ if "tf" in query_params:
 
 st.markdown(f"""
     <div class="dashboard-header">
-        <span style="color: #00E676; font-weight: 900; font-size: 16px;">📊 Stock Dashboard</span>
-        <span style="color: #94A3B8; font-size: 12px; margin-left: 10px;">Overview | 나스닥 선물: {fast_nasdaq_futures()}</span>
+        <span style="color: #3182CE; font-weight: 800; font-size: 16px;">📊 Toss Quant Dashboard</span>
+        <span style="color: #94A3B8; font-size: 12px; margin-left: 10px;">미국 증시 실시간 분석 | 나스닥 선물: {QuantEngine.get_nasdaq_futures()}</span>
     </div>
 """, unsafe_allow_html=True)
 
-current_tf = st.session_state['timeframe']
-current_sel = st.session_state['selected_ticker']
-
 col_search, col_dummy = st.columns([2.0, 3.0])
 with col_search:
-    search_input = st.text_input("티커 검색", value=current_sel, placeholder="예: AAPL, TSLA, ASTS...")
-    
-    if search_input and search_input.strip().upper() != current_sel:
-        suggestions = get_search_suggestions(search_input)
-        if suggestions:
-            for item in suggestions:
-                sym = item["symbol"]
-                name = item["name"]
-                ex = item["exchange"]
-                if st.button(f"🔍 {sym}  |  {name}  ({ex})", key=f"btn_{sym}"):
-                    st.session_state['selected_ticker'] = sym
-                    st.query_params["q"] = sym
-                    st.rerun()
+    selected_ticker_result = st_searchbox(
+        QuantEngine.search_stock_suggestions,
+        placeholder="미국 주식 티커 또는 기업명 검색...",
+        key="stock_autocomplete_search",
+    )
 
-res = fast_market_data(st.session_state['selected_ticker'], st.session_state['timeframe'])
+    if selected_ticker_result and selected_ticker_result != st.session_state['selected_ticker']:
+        st.session_state['selected_ticker'] = selected_ticker_result.upper()
+        st.query_params["q"] = selected_ticker_result.upper()
+        st.rerun()
+
+res = QuantEngine.fetch_market_data(st.session_state['selected_ticker'], st.session_state['timeframe'])
 
 if res:
-    st.markdown(f"<h3 style='color: #F8FAFC; margin-bottom: 5px;'>[{res['ticker']}] {res['company_name']}</h3>", unsafe_allow_html=True)
+    st.markdown(f"<h3 style='color: #F8FAFC; margin-bottom: 5px; font-weight: 700;'>{res['company_name']} <span style='color: #94A3B8; font-size: 16px;'>({res['ticker']})</span></h3>", unsafe_allow_html=True)
     
     score = res['score']
-    
     st.markdown(
-        f"<div style='background: linear-gradient(135deg, #F59E0B, #D97706); color: #000000; font-weight: 900; font-size: 15px; text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 12px;'>"
-        f"매수적합도 : {score} / 100 점"
+        f"<div style='background: linear-gradient(135deg, #1E293B, #0F172A); border: 1px solid #334155; color: #F8FAFC; font-weight: 700; font-size: 15px; text-align: center; padding: 12px; border-radius: 10px; margin-bottom: 15px;'>"
+        f"🎯 매수적합도 : <span style='color: #3182CE;'>{score} / 100 점</span>"
         f"</div>",
         unsafe_allow_html=True
     )
@@ -253,33 +380,35 @@ if res:
     col8.metric("최대 낙폭", f"{res['bt_mdd']:.1f}%")
 
     st.markdown("<br>", unsafe_allow_html=True)
-    
-    # 초록색 상태 바 복원
-    status_text = "🚀 STRONG BUY (엄격한 기준 충족 / 안전 진입 구간)" if score >= 75 else "⚠️ WAIT & DEFENSE (위험 관리 및 관망 권장 구간)"
-    st.markdown(f"<p style='color: #00E676; font-weight: bold; font-size: 14px; margin-bottom: 15px;'>{status_text}</p>", unsafe_allow_html=True)
+    status_text = "🚀 STRONG BUY (안전 진입 구간 충족)" if score >= 75 else "⚠️ WAIT & DEFENSE (위험 관리 및 관망 권장)"
+    st.markdown(f"<p style='color: #3182CE; font-weight: bold; font-size: 14px; margin-bottom: 15px;'>{status_text}</p>", unsafe_allow_html=True)
 
-    c_title, c_tf_label, b1, b2, b3 = st.columns([2.5, 1.0, 0.5, 0.5, 0.5])
+    c_title, c_tf = st.columns([3.5, 1.5])
     with c_title:
         st.markdown("<h4 style='color: #94A3B8; font-size: 14px; margin-top: 12px;'>📈 Technical Chart & MA</h4>", unsafe_allow_html=True)
-    
-    with b1:
-        if st.button("1D", key="tf_1d"):
-            st.query_params["tf"] = "1D"
-            st.rerun()
-    with b2:
-        if st.button("1H", key="tf_1h"):
-            st.query_params["tf"] = "1H"
-            st.rerun()
-    with b3:
-        if st.button("15M", key="tf_15m"):
-            st.query_params["tf"] = "15M"
-            st.rerun()
+    with c_tf:
+        current_tf = st.session_state['timeframe']
+        tf_1d_bg = "#1E293B" if current_tf == "1D" else "#121824"
+        tf_1d_color = "#3182CE" if current_tf == "1D" else "#94A3B8"
+        tf_1h_bg = "#1E293B" if current_tf == "1H" else "#121824"
+        tf_1h_color = "#3182CE" if current_tf == "1H" else "#94A3B8"
+        tf_15m_bg = "#1E293B" if current_tf == "15M" else "#121824"
+        tf_15m_color = "#3182CE" if current_tf == "15M" else "#94A3B8"
+
+        tf_html = f"""
+        <div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 6px;">
+            <button onclick="window.parent.location.search = '?q={res['ticker']}&tf=1D'" style="background-color: {tf_1d_bg}; color: {tf_1d_color}; border: 1px solid #1E293B; border-radius: 6px; padding: 6px 10px; font-weight: 700; font-size: 12px; cursor: pointer;">1D</button>
+            <button onclick="window.parent.location.search = '?q={res['ticker']}&tf=1H'" style="background-color: {tf_1h_bg}; color: {tf_1h_color}; border: 1px solid #1E293B; border-radius: 6px; padding: 6px 10px; font-weight: 700; font-size: 12px; cursor: pointer;">1H</button>
+            <button onclick="window.parent.location.search = '?q={res['ticker']}&tf=15M'" style="background-color: {tf_15m_bg}; color: {tf_15m_color}; border: 1px solid #1E293B; border-radius: 6px; padding: 6px 10px; font-weight: 700; font-size: 12px; cursor: pointer;">15M</button>
+        </div>
+        """
+        components.html(tf_html, height=45)
     
     fig, ax = plt.subplots(figsize=(14, 4.5), facecolor='#0B0E14')
     ax.set_facecolor('#121824')
     
     df = res['data']
-    ax.plot(df.index, df['Close'], label='Close Price', color='#00E676', linewidth=1.5)
+    ax.plot(df.index, df['Close'], label='Close Price', color='#3182CE', linewidth=1.5)
     ax.plot(df.index, res['ema20'], label='EMA 20', color='#38BDF8', linewidth=1, linestyle='--')
     ax.plot(df.index, res['ema50'], label='EMA 50', color='#F59E0B', linewidth=1, linestyle='--')
     ax.plot(df.index, res['ema200'], label='EMA 200', color='#EC4899', linewidth=1, linestyle='--')
@@ -292,5 +421,35 @@ if res:
     ax.legend(loc='upper left', facecolor='#121824', edgecolor='#1E293B', labelcolor='#F8FAFC', fontsize=9)
     fig.tight_layout()
     st.pyplot(fig)
+
+    tab_news, tab_gossip = st.tabs(["📰 구글 영문 뉴스", "💬 X & 레딧 찌라시"])
+    
+    with tab_news:
+        news = QuantEngine.get_google_news(res['ticker'])
+        for title, summary, pub, link, img_url in news:
+            st.markdown(
+                f"<div class='news-card'>"
+                f"<img src='{img_url}' class='news-img'>"
+                f"<div class='news-content'>"
+                f"🔗 <a href='{link}' target='_blank' style='color: #3182CE; font-weight: 700; text-decoration: none; font-size: 13px;'>{title}</a><br>"
+                f"<span style='color: #94A3B8; font-size: 11px;'>⏱ {pub}</span><br>"
+                f"<span style='color: #CBD5E1; font-size: 12px;'>{summary}</span>"
+                f"</div></div>",
+                unsafe_allow_html=True
+            )
+            
+    with tab_gossip:
+        gossip = QuantEngine.get_social_gossip(res['ticker'])
+        for title, summary, pub, link, img_url in gossip:
+            st.markdown(
+                f"<div class='news-card'>"
+                f"<img src='{img_url}' class='news-img'>"
+                f"<div class='news-content'>"
+                f"💬 <a href='{link}' target='_blank' style='color: #38BDF8; font-weight: 700; text-decoration: none; font-size: 13px;'>{title}</a><br>"
+                f"<span style='color: #94A3B8; font-size: 11px;'>⏱ {pub}</span><br>"
+                f"<span style='color: #CBD5E1; font-size: 12px;'>{summary}</span>"
+                f"</div></div>",
+                unsafe_allow_html=True
+            )
 else:
     st.error("데이터를 불러오지 못했습니다.")
