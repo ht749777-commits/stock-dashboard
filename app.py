@@ -14,10 +14,21 @@ import yfinance as yf
 import matplotlib.pyplot as plt
 from streamlit_searchbox import st_searchbox
 
-# 페이지 설정 (반응형 와이드 레이아웃)
+# 🖼️ 로컬 이미지를 Base64 문자열로 변환하는 함수
+def get_image_base64(path):
+    try:
+        with open(path, "rb") as image_file:
+            encoded = base64.b64encode(image_file.read()).decode()
+            ext = path.split('.')[-1].lower()
+            mime_type = "image/png" if ext == "png" else "image/jpeg"
+            return f"data:{mime_type};base64,{encoded}"
+    except Exception:
+        return ""
+
+# 페이지 설정 (파비콘 아이콘 지정)
 st.set_page_config(
     page_title="TAURUS LAB",
-    page_icon="🐂",
+    page_icon="bull logo.png",  # 인터넷 탭에 보여질 파비콘 이미지
     layout="wide"
 )
 
@@ -85,17 +96,6 @@ st.markdown("""
     .stTabs [aria-selected="true"] { background-color: #1E293B !important; color: #00E676 !important; font-weight: bold; }
     </style>
 """, unsafe_allow_html=True)
-
-# 🖼️ 로컬 이미지를 Base64 문자열로 변환하는 함수
-def get_image_base64(path):
-    try:
-        with open(path, "rb") as image_file:
-            encoded = base64.b64encode(image_file.read()).decode()
-            ext = path.split('.')[-1].lower()
-            mime_type = "image/png" if ext == "png" else "image/jpeg"
-            return f"data:{mime_type};base64,{encoded}"
-    except Exception:
-        return ""
 
 class QuantEngine:
     FINANCIAL_DICT = {
@@ -328,24 +328,24 @@ with col_popover:
 # ── [화면 중앙 메인 로고 영역 (TAURUS LAB)] ──
 col_b1, col_b2, col_b3 = st.columns([1, 2, 1])
 with col_b2:
-    main_logo = get_image_base64("taurusfinal.png")
+    main_logo = get_image_base64("bull logo.png")
     if main_logo:
         st.markdown(f"""
             <div style="text-align: center; margin-bottom: 25px;">
-                <img src="{main_logo}" style="max-width: 320px; width: 100%; height: auto; border-radius: 12px;">
+                <img src="{main_logo}" style="max-width: 260px; width: 100%; height: auto;">
             </div>
         """, unsafe_allow_html=True)
     else:
         st.markdown("""
             <div style="
                 background: linear-gradient(135deg, #121824 0%, #1E293B 100%);
-                border: 2px solid #FF5500;
+                border: 2px solid #FF2A2A;
                 border-radius: 12px;
                 padding: 20px;
                 text-align: center;
                 margin-bottom: 20px;
             ">
-                <h1 style="color: #FF5500; margin: 0; font-size: 32px; font-weight: 900; letter-spacing: 2px;">TAURUS LAB</h1>
+                <h1 style="color: #FF2A2A; margin: 0; font-size: 32px; font-weight: 900; letter-spacing: 2px;">TAURUS LAB</h1>
             </div>
         """, unsafe_allow_html=True)
 
@@ -377,11 +377,11 @@ if res:
         st.markdown(f"<h3 style='color: #F8FAFC; margin-bottom: 5px;'>[{res['ticker']}] {res['company_name']}</h3>", unsafe_allow_html=True)
     
     with col_btn:
-        img_src = get_image_base64("taurusfinal.png")
+        img_src = get_image_base64("bull logo.png")
         if img_src:
             img_html = f'<img src="{img_src}" style="width: 100%; height: 100%; object-fit: cover;">'
         else:
-            img_html = '<span style="color: #FF5500; font-weight: bold; font-size: 10px;">TL</span>'
+            img_html = '<span style="color: #FF2A2A; font-weight: bold; font-size: 10px;">TL</span>'
 
         st.markdown(f"""
             <div style="display: flex; justify-content: flex-end; align-items: center; height: 100%; padding-top: 5px;">
@@ -406,7 +406,7 @@ if res:
                             align-items: center; 
                             justify-content: center;
                             background-color: #000000;
-                            border: 1px solid #FF5500;
+                            border: 1px solid #FF2A2A;
                         ">
                             {img_html}
                         </div>
