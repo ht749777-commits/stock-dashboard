@@ -427,7 +427,7 @@ margin-bottom: 20px;
 <h1 style="color: #FF2A2A; margin: 0; font-size: 32px; font-weight: 900; letter-spacing: 2px;">TAURUS LAB</h1>
 </div>""", unsafe_allow_html=True)
 
-# ── [Market Overview 영역 (게임 아이템 툴팁 - 3개씩 2줄 그리드 스타일)] ──
+# ── [Market Overview 영역 (게임 아이템 툴팁 - 맨위로 덮어씌우기 및 공백 제거)] ──
 market_data = QuantEngine.get_market_overview_data()
 
 nq_val, nq_chg = market_data["NQ"]
@@ -446,6 +446,7 @@ market_component_html = f"""
         margin: 0;
         background-color: transparent;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        overflow: visible;
     }}
     .market-overview-container {{
         position: relative;
@@ -454,6 +455,7 @@ market_component_html = f"""
         border-radius: 8px;
         border: 1px solid #1E293B;
         box-sizing: border-box;
+        overflow: visible;
     }}
     .market-bar {{
         display: flex;
@@ -512,20 +514,20 @@ market_component_html = f"""
         92% {{ top: -120px; }}
         100% {{ top: -144px; }}
     }}
-    /* 게임 아이템 툴팁(Tooltip) 스타일 - 3개씩 2줄 그리드 패널 */
+    /* 게임 아이템 툴팁(Tooltip) 스타일 - 맨 위로 덮어씌우기 (z-index 극대화) */
     .dropdown-panel {{
         display: none;
         position: absolute;
         top: 54px;
         left: 0;
         width: 620px;
-        background-color: rgba(13, 17, 23, 0.96);
+        background-color: rgba(13, 17, 23, 0.98);
         border: 1px solid #334155;
         border-radius: 6px;
         padding: 14px 16px;
         box-sizing: border-box;
-        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.85);
-        z-index: 999;
+        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.95);
+        z-index: 999999;
         backdrop-filter: blur(6px);
     }}
     .market-overview-container:hover .dropdown-panel {{
@@ -611,7 +613,7 @@ market_component_html = f"""
                 <span class="label-name">VIX (변동성 지수)</span>
                 <div class="value-box">
                     <span class="label-val">{vix_val:,.2f}</span>
-                    <span class="label-chg" style="color:{'#EF4444' if vix_chg>=0 else '#00E676'};">({vix_chg:+.2f}%)</span>
+                    <span class="label-chg" style="color:{'#EF4444' if vix_chg>=0 else '#EF4444'};">({vix_chg:+.2f}%)</span>
                 </div>
             </div>
             <div class="grid-item">
@@ -625,7 +627,7 @@ market_component_html = f"""
                 <span class="label-name">비트코인 (BTC)</span>
                 <div class="value-box">
                     <span class="label-val">${btc_val:,.0f}</span>
-                    <span class="label-chg" style="color:{'#00E676' if btc_chg>=0 else '#EF4444'};">({btc_chg:+.2f}%)</span>
+                    <span class="label-chg" style="color:{'#00E676' if tnx_chg>=0 else '#EF4444'};">({btc_chg:+.2f}%)</span>
                 </div>
             </div>
         </div>
@@ -634,7 +636,8 @@ market_component_html = f"""
 </body>
 </html>
 """
-components.html(market_component_html, height=195)
+# 🚀 components 높이를 52px로 딱 맞추어 지표와 검색탭 사이의 넓은 빈 공간(공백)을 완전히 제거
+components.html(market_component_html, height=52)
 
 col_search, _ = st.columns([2.0, 3.0])
 with col_search:
