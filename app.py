@@ -157,34 +157,6 @@ class QuantEngine:
             return "29,834.75 (+0.02%)"
 
     @staticmethod
-    def get_earnings_date(ticker_symbol: str) -> str:
-        try:
-            # 가입 없이 야후 파이낸스 웹 내부 API를 직접 찔러서 실적 날짜 추출
-            url = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker_symbol}?modules=calendarEvents"
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
-            with urllib.request.urlopen(req, timeout=3) as response:
-                data = json.loads(response.read().decode('utf-8'))
-                result = data.get('quoteSummary', {}).get('result', [])
-                if result:
-                    earnings_list = result[0].get('calendarEvents', {}).get('earnings', {}).get('earningsDate', [])
-                    if earnings_list:
-                        ts = earnings_list[0].get('raw')
-                        if ts:
-                            dt = datetime.fromtimestamp(ts, tz=timezone.utc)
-                            dt_kst = dt.astimezone(timezone(timedelta(hours=9)))
-                            now_kst = datetime.now(timezone(timedelta(hours=9)))
-                            diff_days = (dt_kst.date() - now_kst.date()).days
-                            
-                            if -5 <= diff_days <= 14:  # 범위 조금 더 유연하게 확대
-                                if diff_days >= 0:
-                                    return dt_kst.strftime("%m월 %d일 실적 발표 예정")
-                                else:
-                                    return dt_kst.strftime("%m월 %d일 실적 발표됨")
-        except:
-            pass
-        return None
-
-    @staticmethod
     def get_google_news(ticker_symbol: str):
         news_list = []
         try:
@@ -349,10 +321,7 @@ with col_search:
 res = QuantEngine.fetch_market_data(st.session_state['selected_ticker'], st.session_state['timeframe'])
 
 if res:
-    earnings_str = QuantEngine.get_earnings_date(res['ticker'])
-    earnings_badge = f"<span style='background-color: #1E293B; color: #38BDF8; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; border: 1px solid #334155; margin-left: 12px;'>📢 {earnings_str}</span>" if earnings_str else ""
-
-    st.markdown(f"<h3 style='color: #F8FAFC; margin-bottom: 5px; display: flex; align-items: center;'><span>[{res['ticker']}] {res['company_name']}</span>{earnings_badge}</h3>", unsafe_allow_html=True)
+    st.markdown(f"<h3 style='color: #F8FAFC; margin-bottom: 5px;'>[{res['ticker']}] {res['company_name']}</h3>", unsafe_allow_html=True)
     
     score = res['score']
     
