@@ -151,7 +151,9 @@ class QuantEngine:
         except:
             return "최근"
 
+    # ⚡ 캐싱 적용 (60초간 메모리 재사용으로 빠른 로딩)
     @staticmethod
+    @st.cache_data(ttl=60)
     def get_market_overview_data():
         tickers = {
             "NQ": "NQ=F",        # 나스닥 100 선물
@@ -164,15 +166,17 @@ class QuantEngine:
         
         results = {}
         try:
-            data = yf.Tickers(" ".join(tickers.values()))
+            # yf.download를 사용해 통신 횟수를 1회로 통합
+            data = yf.download(list(tickers.values()), period="5d", interval="1d", progress=False)['Close']
             for key, sym in tickers.items():
                 try:
-                    hist = data.tickers[sym].history(period="5d")
-                    if not hist.empty and len(hist) >= 2:
-                        curr = float(hist['Close'].iloc[-1])
-                        prev = float(hist['Close'].iloc[-2])
-                        chg_p = ((curr - prev) / prev) * 100
-                        results[key] = (curr, chg_p)
+                    if sym in data.columns:
+                        series = data[sym].dropna()
+                        if len(series) >= 2:
+                            curr = float(series.iloc[-1])
+                            prev = float(series.iloc[-2])
+                            chg_p = ((curr - prev) / prev) * 100
+                            results[key] = (curr, chg_p)
                 except:
                     pass
         except:
@@ -193,7 +197,9 @@ class QuantEngine:
                 
         return results
 
+    # ⚡ 뉴스 데이터 캐싱 (5분간 저장)
     @staticmethod
+    @st.cache_data(ttl=300)
     def get_google_news(ticker_symbol: str):
         news_list = []
         try:
@@ -271,7 +277,9 @@ class QuantEngine:
             pass
         return posts
 
+    # ⚡ 소셜 데이터 캐싱 (5분간 저장)
     @staticmethod
+    @st.cache_data(ttl=300)
     def get_social_gossip(ticker_symbol: str):
         social_list = QuantEngine.get_stocktwits_posts(ticker_symbol)
         
@@ -308,9 +316,8 @@ class QuantEngine:
         return social_list if social_list else [(f"[{ticker_symbol}] 최근 실시간 소셜 언급이 없습니다.", "", "방금 전", "#")]
 
     @staticmethod
-    def run_backtest(ticker_symbol: str):
+    def run_backtest_from_df(df: pd.DataFrame):
         try:
-            df = yf.Ticker(ticker_symbol).history(period="1y", interval="1d")
             if df.empty or len(df) < 50: return 1906.4, 64.3, -20.6
             close = df['Close']
             ema20 = close.ewm(span=20, adjust=False).mean()
@@ -322,13 +329,18 @@ class QuantEngine:
         except:
             return 1906.4, 64.3, -20.6
 
+    # ⚡ 메인 종목 데이터 연산 캐싱 (3분간 저장 및 중복 백테스트 호출 제거)
     @staticmethod
+    @st.cache_data(ttl=180)
     def fetch_market_data(ticker_symbol: str, timeframe: str = "1D"):
         try:
             ticker_obj = yf.Ticker(ticker_symbol)
             info = ticker_obj.info
             data = ticker_obj.history(period="1y" if timeframe == "1D" else "5d", interval="1d" if timeframe == "1D" else "15m")
             
+            if data.empty:
+                return None
+
             close = data['Close']
             high = data['High']
             low = data['Low']
@@ -348,7 +360,9 @@ class QuantEngine:
             
             rsi = float(100 - (100 / (1 + (close.diff().where(close.diff() > 0, 0).rolling(14).mean() / (-close.diff().where(close.diff() < 0, 0).rolling(14).mean() + 1e-9)).iloc[-1])))
             short_ratio = info.get('shortPercentOfFloat', 0.05)
-            bt_ret, bt_win, bt_mdd = QuantEngine.run_backtest(ticker_symbol)
+            
+            # 백테스트에 이미 불러온 data를 재활용하여 이중 호출 제거
+            bt_ret, bt_win, bt_mdd = QuantEngine.run_backtest_from_df(data)
 
             score = 40 
             if len(close) >= 200 and curr_price > ema20.iloc[-1] and ema20.iloc[-1] > ema50.iloc[-1] and ema50.iloc[-1] > ema200.iloc[-1]:
