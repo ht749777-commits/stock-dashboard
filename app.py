@@ -160,32 +160,47 @@ class QuantEngine:
     def get_earnings_date(ticker_symbol: str) -> str:
         try:
             ticker_obj = yf.Ticker(ticker_symbol)
-            calendar = ticker_obj.calendar
+            
+            # 1차 시도: calendar 속성 이용
+            calendar = getattr(ticker_obj, 'calendar', None)
+            earnings_date = None
+            
             if calendar is not None and not calendar.empty:
-                earnings_date = None
                 if 'Earnings Date' in calendar:
                     earnings_date = calendar['Earnings Date'][0]
                 elif hasattr(calendar, 'loc') and 'Earnings Date' in calendar.index:
                     earnings_date = calendar.loc['Earnings Date'].iloc[0]
+            
+            # 2차 시도: get_earnings_dates() 메서드 이용 (더 안정적)
+            if not earnings_date and hasattr(ticker_obj, 'get_earnings_dates'):
+                ed_df = ticker_obj.get_earnings_dates(limit=3)
+                if ed_df is not None and not ed_df.empty:
+                    now_ts = pd.Timestamp.now(tz='UTC')
+                    future_or_recent = ed_df.index
+                    # 가장 가까운 미래 또는 최근 과거 선택
+                    earnings_date = future_or_recent[0]
+
+            if earnings_date:
+                if isinstance(earnings_date, str):
+                    dt = datetime.fromisoformat(earnings_date.replace('Z', '+00:00'))
+                else:
+                    dt = pd.to_datetime(earnings_date)
                 
-                if earnings_date:
-                    if isinstance(earnings_date, str):
-                        dt = datetime.fromisoformat(earnings_date.replace('Z', '+00:00'))
+                if dt.tzinfo is None:
+                    dt = dt.tz_localize('UTC')
+                dt_kst = dt.tz_convert(timezone(timedelta(hours=9)))
+                
+                now_kst = datetime.now(timezone(timedelta(hours=9)))
+                diff_days = (dt_kst.date() - now_kst.date()).days
+                
+                # D-5 ~ D+2 범위 체크
+                if -5 <= diff_days <= 2:
+                    if diff_days >= 0:
+                        return dt_kst.strftime("%m월 %d일 실적 발표 예정")
                     else:
-                        dt = pd.to_datetime(earnings_date)
-                    
-                    if dt.tzinfo is None:
-                        dt = dt.tz_localize('UTC')
-                    dt_kst = dt.tz_convert(timezone(timedelta(hours=9)))
-                    
-                    # 현재 한국 시간 기준 비교 (-5일 ~ +2일 범위 체크)
-                    now_kst = datetime.now(timezone(timedelta(hours=9)))
-                    diff_days = (dt_kst.date() - now_kst.date()).days
-                    
-                    if -5 <= diff_days <= 2:
-                        return dt_kst.strftime("%m월 %d일실적 발표 예정") if diff_days >= 0 else dt_kst.strftime("%m월 %d일 실적 발표됨")
-        except:
-            pass
+                        return dt_kst.strftime("%m월 %d일 실적 발표됨")
+        except Exception as e:
+            print(f"Earnings fetch error: {e}")
         return None
 
     @staticmethod
@@ -353,7 +368,6 @@ with col_search:
 res = QuantEngine.fetch_market_data(st.session_state['selected_ticker'], st.session_state['timeframe'])
 
 if res:
-    # 📢 실적 발표일 필터링 (D-5 ~ D+2 범위일 때만 뱃지 표시)
     earnings_str = QuantEngine.get_earnings_date(res['ticker'])
     earnings_badge = f"<span style='background-color: #1E293B; color: #38BDF8; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; border: 1px solid #334155; margin-left: 12px;'>📢 {earnings_str}</span>" if earnings_str else ""
 
