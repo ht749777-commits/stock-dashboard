@@ -15,30 +15,30 @@ from streamlit_searchbox import st_searchbox
 
 # 페이지 설정 (반응형 와이드 레이아웃)
 st.set_page_config(
-    page_title="Professional Stock Dashboard",
+    page_title="Toss-Style Quant Dashboard",
     page_icon="📊",
     layout="wide"
 )
 
-# 🎨 다크 테마 및 입력창 스타일 CSS 커스텀
+# 🎨 토스증권 감성의 깔끔한 다크 테마 및 컴포넌트 CSS 커스텀
 st.markdown("""
     <style>
     .stApp { background-color: #0B0E14 !important; color: #E0E0E0 !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     
     .dashboard-header {
         background-color: #121824;
-        padding: 14px 18px;
-        border-radius: 10px;
+        padding: 16px 20px;
+        border-radius: 12px;
         border: 1px solid #1E293B;
-        margin-bottom: 15px;
+        margin-bottom: 20px;
     }
 
     div[data-testid="stMetric"] {
         background-color: #121824 !important;
         border: 1px solid #1E293B !important;
-        padding: 14px !important;
-        border-radius: 10px !important;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        padding: 16px !important;
+        border-radius: 12px !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         min-height: 95px !important;
         display: flex;
         flex-direction: column;
@@ -46,39 +46,39 @@ st.markdown("""
     }
     div[data-testid="stMetric"] label {
         color: #94A3B8 !important;
-        font-weight: 600 !important;
-        font-size: 11px !important;
+        font-weight: 500 !important;
+        font-size: 12px !important;
     }
     div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
         color: #F8FAFC !important;
-        font-weight: 800 !important;
-        font-size: 17px !important;
+        font-weight: 700 !important;
+        font-size: 18px !important;
     }
 
     .news-card { 
         background-color: #121824 !important; 
-        padding: 14px; 
-        border-radius: 10px; 
+        padding: 16px; 
+        border-radius: 12px; 
         border: 1px solid #1E293B; 
-        margin-bottom: 10px; 
+        margin-bottom: 12px; 
     }
 
     .stButton > button {
         background-color: #121824 !important;
-        color: #00E676 !important;
+        color: #3182CE !important;
         border: 1px solid #1E293B !important;
-        font-weight: 700 !important;
+        font-weight: 600 !important;
         border-radius: 8px !important;
     }
     .stButton > button:hover {
         background-color: #1E293B !important;
-        border-color: #00E676 !important;
+        border-color: #3182CE !important;
         color: #FFFFFF !important;
     }
     
-    .stTabs [data-baseweb="tab-list"] { gap: 6px; background-color: transparent; }
-    .stTabs [data-baseweb="tab"] { background-color: #121824; border-radius: 6px; color: #94A3B8; border: 1px solid #1E293B; padding: 6px 12px; font-size: 13px; }
-    .stTabs [aria-selected="true"] { background-color: #1E293B !important; color: #00E676 !important; font-weight: bold; }
+    .stTabs [data-baseweb="tab-list"] { gap: 8px; background-color: transparent; }
+    .stTabs [data-baseweb="tab"] { background-color: #121824; border-radius: 8px; color: #94A3B8; border: 1px solid #1E293B; padding: 8px 16px; font-size: 13px; }
+    .stTabs [aria-selected="true"] { background-color: #1E293B !important; color: #3182CE !important; font-weight: bold; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -96,7 +96,8 @@ class QuantEngine:
             return []
         term = search_term.strip().upper()
         try:
-            url = f"https://query2.finance.yahoo.com/v1/finance/search?q={urllib.parse.quote(term)}&quotesCount=8&newsCount=0"
+            # 미국 상장 중심 검색 최적화
+            url = f"https://query2.finance.yahoo.com/v1/finance/search?q={urllib.parse.quote(term)}&quotesCount=10&newsCount=0"
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
             with urllib.request.urlopen(req, timeout=2) as response:
                 data = json.loads(response.read().decode('utf-8'))
@@ -105,9 +106,11 @@ class QuantEngine:
                 suggestions = []
                 for q in quotes:
                     symbol = q.get('symbol', '')
-                    name = q.get('shortname', q.get('longname', symbol))
                     ex = q.get('exchange', '')
-                    display_text = f"{symbol} | {name} ({ex})"
+                    # 미국 주요 거래소(나스닥, 뉴욕 등) 위주 선별
+                    name = q.get('shortname', q.get('longname', symbol))
+                    # 토스증권 스타일의 직관적인 표기 (티커 — 기업명)
+                    display_text = f"{symbol}  |  {name} ({ex})"
                     suggestions.append((display_text, symbol))
                 return suggestions
         except:
@@ -231,8 +234,8 @@ class QuantEngine:
             price_change_p = ((curr_price - prev_price) / prev_price) * 100
             
             atr = float((high.tail(14) - low.tail(14)).mean())
-            stop_loss = curr_price - (atr * 1.5)  # 🛡️ 보수적 투자자를 위해 손절 폭을 조금 더 타이트하게 설정 (1.5 ATR)
-            take_profit = curr_price + (atr * 2.5) # 🛡️ 목표가도 현실적으로 조정 (2.5 ATR)
+            stop_loss = curr_price - (atr * 1.5) 
+            take_profit = curr_price + (atr * 2.5)
 
             ema20 = close.ewm(span=20, adjust=False).mean()
             ema50 = close.ewm(span=50, adjust=False).mean() if len(close) >= 50 else ema20
@@ -242,37 +245,31 @@ class QuantEngine:
             short_ratio = info.get('shortPercentOfFloat', 0.05)
             bt_ret, bt_win, bt_mdd = QuantEngine.run_backtest(ticker_symbol)
 
-            # 🛡️ [매우 보수적 우량 퀀트 점수 산정 로직]
-            score = 40  # 기본 점수를 낮게 설정하여 진입 문턱을 높임
-            
-            # 1. 완벽한 정배열 및 장기 추세 확인 (가점 대폭 축소 및 역배열 시 강력 감점)
+            score = 40 
             if len(close) >= 200 and curr_price > ema20.iloc[-1] and ema20.iloc[-1] > ema50.iloc[-1] and ema50.iloc[-1] > ema200.iloc[-1]:
                 score += 25
             elif curr_price > ema20.iloc[-1]:
                 score += 5
             else:
-                score -= 20 # 역배열이거나 이평선 아래면 큰 감점
+                score -= 20
 
-            # 2. RSI 안정 구간 세분화 (과매수 구간 진입 시 엄격한 감점)
-            if 45 <= rsi <= 60:  # 너무 높지도 낮지도 않은 안전한 상승 초입/조정 구간
+            if 45 <= rsi <= 60: 
                 score += 20
-            elif 60 < rsi <= 70: # 약간의 상승세
+            elif 60 < rsi <= 70:
                 score += 10
-            elif rsi > 70 or rsi < 35: # 과매수 또는 과매도 위험 구간
+            elif rsi > 70 or rsi < 35:
                 score -= 25
 
-            # 3. 유동성 및 거래대금 필터 강화 (일평균 거래대금 1,000만 달러 미만 종목 강력 감점)
             avg_volume_20 = volume.tail(20).mean()
             if avg_volume_20 * curr_price < 10000000:
                 score -= 25
             else:
                 score += 10
 
-            # 4. 단기 과열(이격도) 철저 차단 (20일선 기준 이격도 10% 이상이면 과열로 판단 감점)
             disparity = ((curr_price - ema20.iloc[-1]) / ema20.iloc[-1]) * 100
             if disparity > 10:
                 score -= 20
-            elif disparity < -5: # 너무 급락한 칼날인 경우도 감점
+            elif disparity < -5:
                 score -= 10
 
             score = max(0, min(100, score))
@@ -301,8 +298,8 @@ if "tf" in query_params:
 
 st.markdown(f"""
     <div class="dashboard-header">
-        <span style="color: #00E676; font-weight: 900; font-size: 16px;">📊 Stock Dashboard (Conservative Mode)</span>
-        <span style="color: #94A3B8; font-size: 12px; margin-left: 10px;">Overview | 나스닥 선물: {QuantEngine.get_nasdaq_futures()}</span>
+        <span style="color: #3182CE; font-weight: 800; font-size: 16px;">📊 Toss Quant Dashboard</span>
+        <span style="color: #94A3B8; font-size: 12px; margin-left: 10px;">미국 증시 실시간 분석 | 나스닥 선물: {QuantEngine.get_nasdaq_futures()}</span>
     </div>
 """, unsafe_allow_html=True)
 
@@ -310,7 +307,7 @@ col_search, col_dummy = st.columns([2.0, 3.0])
 with col_search:
     selected_ticker_result = st_searchbox(
         QuantEngine.search_stock_suggestions,
-        placeholder="티커 검색 (예: asts)...",
+        placeholder="미국 주식 티커 또는 기업명 검색...",
         key="stock_autocomplete_search",
     )
 
@@ -322,12 +319,12 @@ with col_search:
 res = QuantEngine.fetch_market_data(st.session_state['selected_ticker'], st.session_state['timeframe'])
 
 if res:
-    st.markdown(f"<h3 style='color: #F8FAFC; margin-bottom: 5px;'>[{res['ticker']}] {res['company_name']}</h3>", unsafe_allow_html=True)
+    st.markdown(f"<h3 style='color: #F8FAFC; margin-bottom: 5px; font-weight: 700;'>{res['company_name']} <span style='color: #94A3B8; font-size: 16px;'>({res['ticker']})</span></h3>", unsafe_allow_html=True)
     
     score = res['score']
     st.markdown(
-        f"<div style='background: linear-gradient(135deg, #F59E0B, #D97706); color: #000000; font-weight: 900; font-size: 15px; text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 12px;'>"
-        f"보수적 퀀트 매수 적합도 : {score} / 100 점"
+        f"<div style='background: linear-gradient(135deg, #1E293B, #0F172A); border: 1px solid #334155; color: #F8FAFC; font-weight: 700; font-size: 15px; text-align: center; padding: 12px; border-radius: 10px; margin-bottom: 15px;'>"
+        f"🎯 보수적 퀀트 매수 적합도 : <span style='color: #3182CE;'>{score} / 100 점</span>"
         f"</div>",
         unsafe_allow_html=True
     )
@@ -345,9 +342,8 @@ if res:
     col8.metric("최대 낙폭", f"{res['bt_mdd']:.1f}%")
 
     st.markdown("<br>", unsafe_allow_html=True)
-    # 🛡️ 보수적 기준: 75점 이상이어야 적극 매수, 그 외에는 철저한 관망 권장
-    status_text = "🚀 STRONG BUY (엄격한 기준 충족 / 안전 진입 구간)" if score >= 75 else "⚠️ WAIT & DEFENSE (위험 관리 및 관망 권장 구간)"
-    st.markdown(f"<p style='color: #00E676; font-weight: bold; font-size: 14px; margin-bottom: 15px;'>{status_text}</p>", unsafe_allow_html=True)
+    status_text = "🚀 STRONG BUY (안전 진입 구간 충족)" if score >= 75 else "⚠️ WAIT & DEFENSE (위험 관리 및 관망 권장)"
+    st.markdown(f"<p style='color: #3182CE; font-weight: bold; font-size: 14px; margin-bottom: 15px;'>{status_text}</p>", unsafe_allow_html=True)
 
     c_title, c_tf = st.columns([3.5, 1.5])
     with c_title:
@@ -355,11 +351,11 @@ if res:
     with c_tf:
         current_tf = st.session_state['timeframe']
         tf_1d_bg = "#1E293B" if current_tf == "1D" else "#121824"
-        tf_1d_color = "#00E676" if current_tf == "1D" else "#94A3B8"
+        tf_1d_color = "#3182CE" if current_tf == "1D" else "#94A3B8"
         tf_1h_bg = "#1E293B" if current_tf == "1H" else "#121824"
-        tf_1h_color = "#00E676" if current_tf == "1H" else "#94A3B8"
+        tf_1h_color = "#3182CE" if current_tf == "1H" else "#94A3B8"
         tf_15m_bg = "#1E293B" if current_tf == "15M" else "#121824"
-        tf_15m_color = "#00E676" if current_tf == "15M" else "#94A3B8"
+        tf_15m_color = "#3182CE" if current_tf == "15M" else "#94A3B8"
 
         tf_html = f"""
         <div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 6px;">
@@ -374,7 +370,7 @@ if res:
     ax.set_facecolor('#121824')
     
     df = res['data']
-    ax.plot(df.index, df['Close'], label='Close Price', color='#00E676', linewidth=1.5)
+    ax.plot(df.index, df['Close'], label='Close Price', color='#3182CE', linewidth=1.5)
     ax.plot(df.index, res['ema20'], label='EMA 20', color='#38BDF8', linewidth=1, linestyle='--')
     ax.plot(df.index, res['ema50'], label='EMA 50', color='#F59E0B', linewidth=1, linestyle='--')
     ax.plot(df.index, res['ema200'], label='EMA 200', color='#EC4899', linewidth=1, linestyle='--')
@@ -395,7 +391,7 @@ if res:
         for title, summary, pub, link in news:
             st.markdown(
                 f"<div class='news-card'>"
-                f"🔗 <a href='{link}' target='_blank' style='color: #00E676; font-weight: 700; text-decoration: none; font-size: 13px;'>{title}</a><br>"
+                f"🔗 <a href='{link}' target='_blank' style='color: #3182CE; font-weight: 700; text-decoration: none; font-size: 13px;'>{title}</a><br>"
                 f"<span style='color: #94A3B8; font-size: 11px;'>⏱ {pub}</span><br>"
                 f"<span style='color: #CBD5E1; font-size: 12px;'>{summary}</span>"
                 f"</div>",
