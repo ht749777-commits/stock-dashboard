@@ -25,25 +25,72 @@ def get_image_base64(path):
     except Exception:
         return ""
 
-# 페이지 설정 (파비콘 아이콘 지정: taurusfinal.png)
+# 페이지 설정
 st.set_page_config(
     page_title="TAURUS LAB",
-    page_icon="taurusfinal.png",  # 인터넷 탭에 보여질 파비콘 이미지
+    page_icon="taurusfinal.png",
     layout="wide"
 )
 
-# 🎨 다크 테마 및 스타일 CSS 커스텀
+# 🎨 다크 테마 및 호버 툴팁 스타일 CSS 커스텀
 st.markdown("""
     <style>
     .stApp { background-color: #0B0E14 !important; color: #E0E0E0 !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     
-    .dashboard-header {
+    /* 마켓 오버뷰 호버 컨테이너 */
+    .market-overview-container {
+        position: relative;
+        display: inline-block;
+        width: 100%;
         background-color: #121824;
         padding: 14px 18px;
         border-radius: 10px;
         border: 1px solid #1E293B;
         margin-bottom: 15px;
+        cursor: pointer;
+        transition: border-color 0.2s ease;
     }
+    .market-overview-container:hover {
+        border-color: #00E676;
+    }
+
+    /* 호버 시 나타나는 툴팁 박스 */
+    .market-overview-tooltip {
+        visibility: hidden;
+        opacity: 0;
+        width: 320px;
+        background-color: #1A2234;
+        color: #F8FAFC;
+        text-align: left;
+        border-radius: 10px;
+        padding: 14px 16px;
+        position: absolute;
+        z-index: 999;
+        top: 100%;
+        left: 0;
+        margin-top: 8px;
+        border: 1px solid #334155;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        transition: opacity 0.25s ease, visibility 0.25s ease;
+    }
+    .market-overview-container:hover .market-overview-tooltip {
+        visibility: visible;
+        opacity: 1;
+    }
+
+    .tooltip-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 0;
+        border-bottom: 1px solid #283548;
+        font-size: 13px;
+    }
+    .tooltip-row:last-child {
+        border-bottom: none;
+    }
+    .tooltip-label { color: #94A3B8; font-weight: 500; }
+    .tooltip-val { font-weight: 700; color: #F8FAFC; }
 
     div[data-testid="stMetric"] {
         background-color: #121824 !important;
@@ -159,19 +206,50 @@ class QuantEngine:
             return "최근"
 
     @staticmethod
-    def get_nasdaq_futures():
+    def get_market_overview_data():
+        """핵심 글로벌 지표 수집 (나스닥 선물, S&P500 선물, 환율, VIX, 국채금리, 비트코인)"""
+        tickers = {
+            "NQ": "NQ=F",        # 나스닥 100 선물
+            "ES": "ES=F",        # S&P 500 선물
+            "USDKRW": "USDKRW=X",# 원/달러 환율
+            "VIX": "^VIX",       # 변동성 지수
+            "TNX": "^TNX",       # 미국 10년물 국채 금리
+            "BTC": "BTC-USD"     # 비트코인
+        }
+        
+        results = {}
         try:
-            url = "https://query1.finance.yahoo.com/v8/finance/chart/NQ=F?range=1d&interval=1m"
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=3) as response:
-                data = json.loads(response.read().decode())
-                meta = data['chart']['result'][0]['meta']
-                curr = meta['regularMarketPrice']
-                prev = meta['chartPreviousClose']
-                rate = ((curr - prev) / prev) * 100
-                return f"{curr:,.2f} ({rate:+.2f}%)"
+            # yfinance로 한 번에 조회하여 속도 최적화
+            data = yf.Tickers(" ".join(tickers.values()))
+            
+            for key, sym in tickers.items():
+                try:
+                    hist = data.tickers[sym].history(period="5d")
+                    if not hist.empty and len(hist) >= 2:
+                        curr = float(hist['Close'].iloc[-1])
+                        prev = float(hist['Close'].iloc[-2])
+                        chg_p = ((curr - prev) / prev) * 100
+                        results[key] = (curr, chg_p)
+                except:
+                    pass
         except:
-            return "29,834.75 (+0.02%)"
+            pass
+
+        # 기본 예비 데이터 (오류 발생 시 방어용)
+        default_res = {
+            "NQ": (19850.25, 0.15),
+            "ES": (5540.50, 0.08),
+            "USDKRW": (1378.50, -0.22),
+            "VIX": (15.20, -1.50),
+            "TNX": (3.94, -0.05),
+            "BTC": (60850.00, 1.25)
+        }
+        
+        for k, v in default_res.items():
+            if k not in results:
+                results[k] = v
+                
+        return results
 
     @staticmethod
     def get_google_news(ticker_symbol: str):
@@ -225,7 +303,6 @@ class QuantEngine:
                     username = user_info.get('username', 'User')
                     created_at_raw = msg.get('created_at', '')
                     
-                    # 날짜 가공
                     time_str = "방금 전"
                     if created_at_raw:
                         try:
@@ -234,7 +311,6 @@ class QuantEngine:
                         except:
                             time_str = created_at_raw[:10]
 
-                    # 감정 분석 태그 (Bullish / Bearish)
                     sentiment_obj = msg.get('entities', {}).get('sentiment')
                     sentiment_tag = ""
                     if sentiment_obj and sentiment_obj.get('basic'):
@@ -258,10 +334,8 @@ class QuantEngine:
     @staticmethod
     def get_social_gossip(ticker_symbol: str):
         """StockTwits + 레딧/X 연관 소셜 반응 수집"""
-        # 1. StockTwits 데이터 수집
         social_list = QuantEngine.get_stocktwits_posts(ticker_symbol)
         
-        # 2. 결과가 적을 경우 Google RSS 기반 레딧/X 데이터 보완
         if len(social_list) < 5:
             try:
                 query = urllib.parse.quote(f'"{ticker_symbol}" (site:reddit.com OR site:x.com OR site:twitter.com) (stock OR buy OR sell OR rumor)')
@@ -422,10 +496,57 @@ with col_b2:
             </div>
         """, unsafe_allow_html=True)
 
+# ── [Market Overview 영역: 호버 시 주요 글로벌 지표 툴팁 표시] ──
+market_data = QuantEngine.get_market_overview_data()
+
+nq_val, nq_chg = market_data["NQ"]
+es_val, es_chg = market_data["ES"]
+usd_val, usd_chg = market_data["USDKRW"]
+vix_val, vix_chg = market_data["VIX"]
+tnx_val, tnx_chg = market_data["TNX"]
+btc_val, btc_chg = market_data["BTC"]
+
 st.markdown(f"""
-    <div class="dashboard-header">
-        <span style="color: #00E676; font-weight: 900; font-size: 16px;">📊 Market Overview</span>
-        <span style="color: #94A3B8; font-size: 12px; margin-left: 10px;">나스닥 선물: {QuantEngine.get_nasdaq_futures()}</span>
+    <div class="market-overview-container">
+        <div>
+            <span style="color: #00E676; font-weight: 900; font-size: 16px;">📊 Market Overview</span>
+            <span style="color: #94A3B8; font-size: 12px; margin-left: 10px;">
+                나스닥100 선물: <b style="color:#F8FAFC;">{nq_val:,.2f}</b> 
+                <span style="color:{'#00E676' if nq_chg>=0 else '#EF4444'};">({nq_chg:+.2f}%)</span>
+                <span style="color:#64748B; font-size: 11px; margin-left: 6px;">(🔍 마우스를 올려 상세지표 확인)</span>
+            </span>
+        </div>
+        
+        <!-- 마우스 올려 놓을 때 팝업되는 툴팁 영역 -->
+        <div class="market-overview-tooltip">
+            <div style="font-weight: 800; font-size: 13px; color: #00E676; margin-bottom: 8px; border-bottom: 1px solid #334155; padding-bottom: 4px;">
+                🌐 주요 글로벌 시장 지표
+            </div>
+            <div class="tooltip-row">
+                <span class="tooltip-label">나스닥 100 선물</span>
+                <span class="tooltip-val">{nq_val:,.2f} <small style="color:{'#00E676' if nq_chg>=0 else '#EF4444'};">({nq_chg:+.2f}%)</small></span>
+            </div>
+            <div class="tooltip-row">
+                <span class="tooltip-label">S&P 500 선물</span>
+                <span class="tooltip-val">{es_val:,.2f} <small style="color:{'#00E676' if es_chg>=0 else '#EF4444'};">({es_chg:+.2f}%)</small></span>
+            </div>
+            <div class="tooltip-row">
+                <span class="tooltip-label">원/달러 환율 (KRW)</span>
+                <span class="tooltip-val">₩{usd_val:,.2f} <small style="color:{'#00E676' if usd_chg>=0 else '#EF4444'};">({usd_chg:+.2f}%)</small></span>
+            </div>
+            <div class="tooltip-row">
+                <span class="tooltip-label">VIX (공포 지수)</span>
+                <span class="tooltip-val">{vix_val:,.2f} <small style="color:{'#EF4444' if vix_chg>=0 else '#00E676'};">({vix_chg:+.2f}%)</small></span>
+            </div>
+            <div class="tooltip-row">
+                <span class="tooltip-label">미국 10년물 국채금리</span>
+                <span class="tooltip-val">{tnx_val:.2f}% <small style="color:{'#00E676' if tnx_chg>=0 else '#EF4444'};">({tnx_chg:+.2f}%)</small></span>
+            </div>
+            <div class="tooltip-row">
+                <span class="tooltip-label">비트코인 (BTC)</span>
+                <span class="tooltip-val">${btc_val:,.0f} <small style="color:{'#00E676' if btc_chg>=0 else '#EF4444'};">({btc_chg:+.2f}%)</small></span>
+            </div>
+        </div>
     </div>
 """, unsafe_allow_html=True)
 
