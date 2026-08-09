@@ -25,7 +25,7 @@ def get_image_base64(path):
     except Exception:
         return ""
 
-# 페이지 설정 (파비콘 아이콘 지정)
+# 페이지 설정 (파비콘 아이콘 지정: bull logo.png)
 st.set_page_config(
     page_title="TAURUS LAB",
     page_icon="bull logo.png",  # 인터넷 탭에 보여질 파비콘 이미지
@@ -325,10 +325,10 @@ with col_popover:
         if st.button("관심종목 (Watchlist)", use_container_width=True):
             pass
 
-# ── [화면 중앙 메인 로고 영역 (TAURUS LAB)] ──
+# ── [화면 중앙 메인 로고 영역 (taurusfinal.png 적용)] ──
 col_b1, col_b2, col_b3 = st.columns([1, 2, 1])
 with col_b2:
-    main_logo = get_image_base64("bull logo.png")
+    main_logo = get_image_base64("taurusfinal.png")
     if main_logo:
         st.markdown(f"""
             <div style="text-align: center; margin-bottom: 25px;">
@@ -377,6 +377,7 @@ if res:
         st.markdown(f"<h3 style='color: #F8FAFC; margin-bottom: 5px;'>[{res['ticker']}] {res['company_name']}</h3>", unsafe_allow_html=True)
     
     with col_btn:
+        # 상단 배너 버튼 내부는 bull logo.png 유지 혹은 필요시 taurusfinal.png로 변경 가능
         img_src = get_image_base64("bull logo.png")
         if img_src:
             img_html = f'<img src="{img_src}" style="width: 100%; height: 100%; object-fit: cover;">'
