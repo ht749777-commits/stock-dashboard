@@ -1,4 +1,3 @@
-```python
 import streamlit as st
 import streamlit.components.v1 as components
 import urllib.request
@@ -14,13 +13,19 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 import matplotlib.pyplot as plt
-
 from streamlit_searchbox import st_searchbox
 
 
-# ============================================================
-# 🖼️ 로컬 이미지를 Base64 문자열로 변환
-# ============================================================
+# =========================================================
+# 기본 설정
+# =========================================================
+
+KST = timezone(timedelta(hours=9))
+
+
+# =========================================================
+# 로컬 이미지 Base64
+# =========================================================
 
 def get_image_base64(path):
     try:
@@ -28,7 +33,13 @@ def get_image_base64(path):
             encoded = base64.b64encode(image_file.read()).decode()
 
         ext = path.split(".")[-1].lower()
-        mime_type = "image/png" if ext == "png" else "image/jpeg"
+
+        if ext == "png":
+            mime_type = "image/png"
+        elif ext in ["jpg", "jpeg"]:
+            mime_type = "image/jpeg"
+        else:
+            mime_type = "image/png"
 
         return f"data:{mime_type};base64,{encoded}"
 
@@ -36,9 +47,9 @@ def get_image_base64(path):
         return ""
 
 
-# ============================================================
+# =========================================================
 # 페이지 설정
-# ============================================================
+# =========================================================
 
 st.set_page_config(
     page_title="TAURUS LAB",
@@ -47,112 +58,109 @@ st.set_page_config(
 )
 
 
-# ============================================================
-# 🎨 다크 테마 및 스타일
-# ============================================================
+# =========================================================
+# CSS
+# =========================================================
 
 st.markdown(
     """
-<style>
+    <style>
 
-.stApp {
-    background-color: #0B0E14 !important;
-    color: #E0E0E0 !important;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-}
+    .stApp {
+        background-color: #0B0E14 !important;
+        color: #E0E0E0 !important;
+        font-family: -apple-system, BlinkMacSystemFont,
+                     "Segoe UI", Roboto, sans-serif;
+    }
 
-.dashboard-header {
-    background-color: #121824;
-    padding: 14px 18px;
-    border-radius: 10px;
-    border: 1px solid #1E293B;
-    margin-bottom: 15px;
-}
+    .dashboard-header {
+        background-color: #121824;
+        padding: 14px 18px;
+        border-radius: 10px;
+        border: 1px solid #1E293B;
+        margin-bottom: 15px;
+    }
 
-div[data-testid="stMetric"] {
-    background-color: #121824 !important;
-    border: 1px solid #1E293B !important;
-    padding: 14px !important;
-    border-radius: 10px !important;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-    min-height: 95px !important;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
+    div[data-testid="stMetric"] {
+        background-color: #121824 !important;
+        border: 1px solid #1E293B !important;
+        padding: 14px !important;
+        border-radius: 10px !important;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        min-height: 95px !important;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
 
-div[data-testid="stMetric"] label {
-    color: #94A3B8 !important;
-    font-weight: 600 !important;
-    font-size: 11px !important;
-}
+    div[data-testid="stMetric"] label {
+        color: #94A3B8 !important;
+        font-weight: 600 !important;
+        font-size: 11px !important;
+    }
 
-div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
-    color: #F8FAFC !important;
-    font-weight: 800 !important;
-    font-size: 17px !important;
-}
+    div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
+        color: #F8FAFC !important;
+        font-weight: 800 !important;
+        font-size: 17px !important;
+    }
 
-.news-card {
-    background-color: #121824 !important;
-    padding: 12px 16px;
-    border-radius: 8px;
-    border: 1px solid #1E293B;
-    margin-bottom: 8px;
-}
+    .news-card {
+        background-color: #121824 !important;
+        padding: 12px 16px;
+        border-radius: 8px;
+        border: 1px solid #1E293B;
+        margin-bottom: 8px;
+    }
 
-.stButton > button {
-    background-color: #121824 !important;
-    color: #F8FAFC !important;
-    border: 1px solid #1E293B !important;
-    border-radius: 8px !important;
-    padding: 10px 14px !important;
-    text-align: left !important;
-    font-size: 13px !important;
-    font-weight: 600 !important;
-}
+    .stButton > button {
+        background-color: #121824 !important;
+        color: #F8FAFC !important;
+        border: 1px solid #1E293B !important;
+        border-radius: 8px !important;
+        padding: 10px 14px !important;
+        text-align: left !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+    }
 
-.stButton > button:hover {
-    background-color: #1E293B !important;
-    border-color: #00E676 !important;
-    color: #00E676 !important;
-}
+    .stButton > button:hover {
+        background-color: #1E293B !important;
+        border-color: #00E676 !important;
+        color: #00E676 !important;
+    }
 
-.stTabs [data-baseweb="tab-list"] {
-    gap: 6px;
-    background-color: transparent;
-}
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 6px;
+        background-color: transparent;
+    }
 
-.stTabs [data-baseweb="tab"] {
-    background-color: #121824;
-    border-radius: 6px;
-    color: #94A3B8;
-    border: 1px solid #1E293B;
-    padding: 6px 12px;
-    font-size: 13px;
-}
+    .stTabs [data-baseweb="tab"] {
+        background-color: #121824;
+        border-radius: 6px;
+        color: #94A3B8;
+        border: 1px solid #1E293B;
+        padding: 6px 12px;
+        font-size: 13px;
+    }
 
-.stTabs [aria-selected="true"] {
-    background-color: #1E293B !important;
-    color: #00E676 !important;
-    font-weight: bold;
-}
+    .stTabs [aria-selected="true"] {
+        background-color: #1E293B !important;
+        color: #00E676 !important;
+        font-weight: bold;
+    }
 
-</style>
-""",
+    </style>
+    """,
     unsafe_allow_html=True
 )
 
 
-# ============================================================
-# QUANT ENGINE
-# ============================================================
+# =========================================================
+# Quant Engine
+# =========================================================
 
 class QuantEngine:
-
-    # --------------------------------------------------------
-    # 금융 번역 사전
-    # --------------------------------------------------------
 
     FINANCIAL_DICT = {
         "bullish": "강세장인",
@@ -173,9 +181,9 @@ class QuantEngine:
     }
 
 
-    # --------------------------------------------------------
-    # 종목 자동완성
-    # --------------------------------------------------------
+    # =====================================================
+    # 종목 검색
+    # =====================================================
 
     @staticmethod
     def search_stock_suggestions(search_term: str):
@@ -188,8 +196,8 @@ class QuantEngine:
         try:
 
             url = (
-                "https://query2.finance.yahoo.com/v1/finance/search?"
-                f"q={urllib.parse.quote(term)}"
+                "https://query2.finance.yahoo.com/v1/finance/search"
+                f"?q={urllib.parse.quote(term)}"
                 "&quotesCount=20"
                 "&newsCount=0"
             )
@@ -199,62 +207,72 @@ class QuantEngine:
                 headers={"User-Agent": "Mozilla/5.0"}
             )
 
-            with urllib.request.urlopen(req, timeout=2) as response:
+            with urllib.request.urlopen(req, timeout=3) as response:
 
                 data = json.loads(
                     response.read().decode("utf-8")
                 )
 
-                quotes = data.get("quotes", [])
+            quotes = data.get("quotes", [])
 
-                suggestions = []
+            suggestions = []
 
-                us_exchanges = {
-                    "NMS",
-                    "NYQ",
-                    "NGM",
-                    "ASE",
-                    "PCX",
-                    "OBB",
-                    "PNK"
-                }
+            us_exchanges = {
+                "NMS",
+                "NYQ",
+                "NGM",
+                "ASE",
+                "PCX",
+                "OBB",
+                "PNK"
+            }
 
-                for q in quotes:
+            for q in quotes:
 
-                    q_type = q.get("quoteType", "")
-                    ex = q.get("exchange", "")
-                    symbol = q.get("symbol", "")
+                q_type = q.get("quoteType", "")
+                exchange = q.get("exchange", "")
+                symbol = q.get("symbol", "")
 
-                    if (
-                        q_type == "EQUITY"
-                        and (ex in us_exchanges or "." not in symbol)
-                    ):
+                if (
+                    q_type == "EQUITY"
+                    and (
+                        exchange in us_exchanges
+                        or "." not in symbol
+                    )
+                ):
 
-                        name = q.get(
-                            "shortname",
-                            q.get("longname", symbol)
+                    name = q.get(
+                        "shortname",
+                        q.get(
+                            "longname",
+                            symbol
                         )
+                    )
 
-                        display_text = (
-                            f"{symbol} | {name} ({ex})"
+                    display_text = (
+                        f"{symbol} | "
+                        f"{name} ({exchange})"
+                    )
+
+                    suggestions.append(
+                        (
+                            display_text,
+                            symbol
                         )
+                    )
 
-                        suggestions.append(
-                            (display_text, symbol)
-                        )
-
-                return suggestions
+            return suggestions
 
         except Exception:
             return []
 
 
-    # --------------------------------------------------------
-    # 영어 → 한국어 번역
-    # --------------------------------------------------------
+    # =====================================================
+    # 번역
+    # =====================================================
 
     @staticmethod
-    def professional_translate(text: str) -> str:
+    def professional_translate(text: str):
 
         if not text:
             return text
@@ -264,9 +282,13 @@ class QuantEngine:
             encoded_text = urllib.parse.quote(text)
 
             url = (
-                "https://translate.googleapis.com/translate_a/single"
-                "?client=gtx&sl=en&tl=ko&dt=t&q="
-                f"{encoded_text}"
+                "https://translate.googleapis.com/"
+                "translate_a/single"
+                "?client=gtx"
+                "&sl=en"
+                "&tl=ko"
+                "&dt=t"
+                f"&q={encoded_text}"
             )
 
             req = urllib.request.Request(
@@ -274,42 +296,41 @@ class QuantEngine:
                 headers={"User-Agent": "Mozilla/5.0"}
             )
 
-            with urllib.request.urlopen(req, timeout=2) as response:
+            with urllib.request.urlopen(
+                req,
+                timeout=3
+            ) as response:
 
                 res_data = json.loads(
-                    response.read().decode("utf-8")
+                    response.read().decode()
                 )
 
-                translated = "".join(
-                    [
-                        item[0]
-                        for item in res_data[0]
-                        if item[0]
-                    ]
-                )
+            translated = "".join(
+                item[0]
+                for item in res_data[0]
+                if item[0]
+            )
 
-                for eng, kor in QuantEngine.FINANCIAL_DICT.items():
+            for eng, kor in QuantEngine.FINANCIAL_DICT.items():
 
-                    translated = re.compile(
-                        re.escape(eng),
-                        re.IGNORECASE
-                    ).sub(
-                        kor,
-                        translated
-                    )
+                translated = re.compile(
+                    re.escape(eng),
+                    re.IGNORECASE
+                ).sub(kor, translated)
 
-                return translated
+            return translated
 
         except Exception:
+
             return text
 
 
-    # --------------------------------------------------------
-    # 날짜 → 한국시간
-    # --------------------------------------------------------
+    # =====================================================
+    # 날짜 변환
+    # =====================================================
 
     @staticmethod
-    def convert_to_kst_string(pub_parsed) -> str:
+    def convert_to_kst_string(pub_parsed):
 
         try:
 
@@ -323,17 +344,18 @@ class QuantEngine:
 
             return (
                 dt_utc
-                .astimezone(timezone(timedelta(hours=9)))
+                .astimezone(KST)
                 .strftime("%m월 %d일 %H:%M")
             )
 
         except Exception:
+
             return "최근"
 
 
-    # --------------------------------------------------------
+    # =====================================================
     # 나스닥 선물
-    # --------------------------------------------------------
+    # =====================================================
 
     @staticmethod
     def get_nasdaq_futures():
@@ -341,8 +363,9 @@ class QuantEngine:
         try:
 
             url = (
-                "https://query1.finance.yahoo.com/v8/finance/chart/"
-                "NQ=F?range=1d&interval=1m"
+                "https://query1.finance.yahoo.com/"
+                "v8/finance/chart/NQ=F"
+                "?range=1d&interval=1m"
             )
 
             req = urllib.request.Request(
@@ -350,44 +373,87 @@ class QuantEngine:
                 headers={"User-Agent": "Mozilla/5.0"}
             )
 
-            with urllib.request.urlopen(req, timeout=3) as response:
+            with urllib.request.urlopen(
+                req,
+                timeout=3
+            ) as response:
 
                 data = json.loads(
                     response.read().decode()
                 )
 
-                meta = data["chart"]["result"][0]["meta"]
+            meta = data["chart"]["result"][0]["meta"]
 
-                curr = meta["regularMarketPrice"]
-                prev = meta["chartPreviousClose"]
+            curr = meta["regularMarketPrice"]
+            prev = meta["chartPreviousClose"]
 
-                rate = ((curr - prev) / prev) * 100
+            rate = (
+                (curr - prev)
+                / prev
+                * 100
+            )
 
-                return f"{curr:,.2f} ({rate:+.2f}%)"
+            return f"{curr:,.2f} ({rate:+.2f}%)"
 
         except Exception:
 
-            return "29,834.75 (+0.02%)"
+            return "데이터 없음"
 
 
-    # ========================================================
-    # 📰 GOOGLE NEWS
-    # ========================================================
+    # =====================================================
+    # 회사 정보 가져오기
+    # =====================================================
 
     @staticmethod
-    def get_google_news(ticker_symbol: str):
+    def get_company_name(ticker_symbol):
+
+        try:
+
+            ticker = yf.Ticker(ticker_symbol)
+
+            info = ticker.info
+
+            company_name = (
+                info.get("longName")
+                or info.get("shortName")
+                or ticker_symbol
+            )
+
+            return company_name
+
+        except Exception:
+
+            return ticker_symbol
+
+
+    # =====================================================
+    # Google News
+    # =====================================================
+
+    @staticmethod
+    def get_google_news(ticker_symbol):
 
         news_list = []
 
         try:
 
+            company_name = (
+                QuantEngine
+                .get_company_name(ticker_symbol)
+            )
+
+            query_string = (
+                f'"{ticker_symbol}" '
+                f'"{company_name}" stock'
+            )
+
             query = urllib.parse.quote(
-                f'"{ticker_symbol}" stock'
+                query_string
             )
 
             rss_url = (
-                "https://news.google.com/rss/search?"
-                f"q={query}"
+                "https://news.google.com/rss/search"
+                f"?q={query}"
                 "&hl=en-US"
                 "&gl=US"
                 "&ceid=US:en"
@@ -397,13 +463,9 @@ class QuantEngine:
             feed = feedparser.parse(rss_url)
 
             three_days_ago = (
-                datetime.now(
-                    timezone(timedelta(hours=9))
-                )
+                datetime.now(KST)
                 - timedelta(days=3)
             )
-
-            seen_links = set()
 
             for entry in feed.entries:
 
@@ -418,691 +480,586 @@ class QuantEngine:
                             *pub_parsed[:6],
                             tzinfo=timezone.utc
                         )
-                        .astimezone(
-                            timezone(timedelta(hours=9))
-                        )
+                        .astimezone(KST)
                     )
 
                     if dt_kst < three_days_ago:
                         continue
 
-                link = entry.get("link", "#")
+                title_raw = entry.get(
+                    "title",
+                    ""
+                )
 
-                if link in seen_links:
+                summary_raw = (
+                    entry.get("summary", "")
+                    or entry.get(
+                        "description",
+                        ""
+                    )
+                )
+
+                raw_text = (
+                    title_raw
+                    + " "
+                    + summary_raw
+                )
+
+                clean_text = re.sub(
+                    r"<[^>]*>",
+                    " ",
+                    raw_text
+                )
+
+                clean_text = re.sub(
+                    r"\s+",
+                    " ",
+                    clean_text
+                )
+
+                # 종목명이 전혀 없는 결과 제거
+                ticker_found = (
+                    re.search(
+                        rf"\b{re.escape(ticker_symbol)}\b",
+                        clean_text,
+                        re.IGNORECASE
+                    )
+                    is not None
+                )
+
+                company_words = [
+                    word.lower()
+                    for word in re.findall(
+                        r"[A-Za-z]{4,}",
+                        company_name
+                    )
+                ]
+
+                company_found = any(
+                    word in clean_text.lower()
+                    for word in company_words
+                )
+
+                if not ticker_found and not company_found:
                     continue
 
-                title = QuantEngine.professional_translate(
-                    entry.get("title", "No Title")
+                title = (
+                    QuantEngine
+                    .professional_translate(
+                        title_raw
+                    )
                 )
 
-                summary = QuantEngine.professional_translate(
-                    entry.get("summary", "")
-                    or entry.get("description", "")
-                )
-
-                summary = re.sub(
-                    r"<[^>]*>",
-                    "",
-                    summary
+                summary = (
+                    QuantEngine
+                    .professional_translate(
+                        re.sub(
+                            r"<[^>]*>",
+                            "",
+                            summary_raw
+                        )
+                    )
                 )
 
                 news_list.append(
                     (
                         title,
-                        summary[:120] + "...",
+                        summary[:180] + "...",
                         QuantEngine.convert_to_kst_string(
                             pub_parsed
                         ),
-                        link
+                        entry.get("link", "#")
                     )
                 )
 
-                seen_links.add(link)
-
-                if len(news_list) >= 4:
+                if len(news_list) >= 5:
                     break
 
         except Exception:
             pass
 
-        return (
-            news_list
-            if news_list
-            else [
+        if not news_list:
+
+            return [
                 (
-                    f"[{ticker_symbol}] 최근 뉴스가 없습니다.",
+                    f"[{ticker_symbol}] "
+                    "최근 관련 뉴스가 없습니다.",
                     "",
-                    "방금 전",
+                    "최근",
                     "#"
                 )
             ]
+
+        return news_list
+
+
+    # =====================================================
+    # 소셜 검색 관련 핵심 함수
+    # =====================================================
+
+    @staticmethod
+    def social_relevance_score(
+        text,
+        ticker_symbol,
+        company_name
+    ):
+
+        text_lower = text.lower()
+
+        ticker_lower = ticker_symbol.lower()
+
+        score = 0
+
+        # ---------------------------------------------
+        # 티커 확인
+        # ---------------------------------------------
+
+        ticker_patterns = [
+            rf"\${re.escape(ticker_lower)}\b",
+            rf"\b{re.escape(ticker_lower)}\b"
+        ]
+
+        ticker_found = any(
+            re.search(
+                pattern,
+                text_lower,
+                re.IGNORECASE
+            )
+            for pattern in ticker_patterns
+        )
+
+        if ticker_found:
+            score += 50
+
+
+        # ---------------------------------------------
+        # 회사명 확인
+        # ---------------------------------------------
+
+        company_clean = re.sub(
+            r"[^A-Za-z0-9 ]",
+            " ",
+            company_name
+        )
+
+        company_words = [
+            w.lower()
+            for w in company_clean.split()
+            if len(w) >= 4
+        ]
+
+        company_matches = 0
+
+        for word in company_words:
+
+            if word in text_lower:
+                company_matches += 1
+
+        score += min(
+            company_matches * 15,
+            45
         )
 
 
-    # ========================================================
-    # 💬 SOCIAL / X / REDDIT / STOCKTWITS
-    #
-    # 핵심 개선 부분
-    # ========================================================
+        # ---------------------------------------------
+        # 주식 관련 단어
+        # ---------------------------------------------
+
+        finance_keywords = [
+            "stock",
+            "shares",
+            "share",
+            "price",
+            "earnings",
+            "revenue",
+            "guidance",
+            "investor",
+            "investors",
+            "market",
+            "nasdaq",
+            "nyse",
+            "short",
+            "shorts",
+            "squeeze",
+            "bullish",
+            "bearish",
+            "buy",
+            "sell",
+            "calls",
+            "puts",
+            "option",
+            "options",
+            "valuation",
+            "analyst",
+            "target",
+            "launch",
+            "satellite",
+            "contract",
+            "partnership"
+        ]
+
+        finance_count = sum(
+            1
+            for keyword in finance_keywords
+            if keyword in text_lower
+        )
+
+        score += min(
+            finance_count * 5,
+            25
+        )
+
+
+        # ---------------------------------------------
+        # 명백한 비관련 스포츠/농구 결과 감점
+        # ---------------------------------------------
+
+        unrelated_keywords = [
+            "nba",
+            "nfl",
+            "mlb",
+            "nhl",
+            "basketball",
+            "football",
+            "baseball",
+            "soccer",
+            "tennis",
+            "coach",
+            "quarterback",
+            "touchdown",
+            "playoffs",
+            "game score",
+            "box score",
+            "rebound",
+            "assist",
+            " dunk",
+            "basket",
+            "player",
+            "roster",
+            "draft pick"
+        ]
+
+        unrelated_count = sum(
+            1
+            for keyword in unrelated_keywords
+            if keyword in text_lower
+        )
+
+        score -= unrelated_count * 40
+
+        return score
+
+
+    # =====================================================
+    # 소셜 RSS 하나 가져오기
+    # =====================================================
 
     @staticmethod
-    def get_social_gossip(ticker_symbol: str):
+    def fetch_social_feed(
+        ticker_symbol,
+        company_name,
+        source
+    ):
 
-        social_list = []
+        results = []
 
         try:
 
-            ticker_symbol = (
-                ticker_symbol
-                .strip()
-                .upper()
-            )
+            # -----------------------------------------
+            # 플랫폼별 검색어 분리
+            # -----------------------------------------
 
-            # ------------------------------------------------
-            # 1. Yahoo Finance에서 회사명 가져오기
-            # ------------------------------------------------
+            if source == "reddit":
 
-            company_name = ""
-
-            try:
-
-                ticker_obj = yf.Ticker(
-                    ticker_symbol
+                search_query = (
+                    f'"{ticker_symbol}" '
+                    f'"{company_name}" '
+                    "site:reddit.com"
                 )
 
-                info = ticker_obj.info
+            elif source == "x":
 
-                company_name = (
-                    info.get("longName")
-                    or info.get("shortName")
-                    or ""
+                search_query = (
+                    f'"{ticker_symbol}" '
+                    f'"{company_name}" '
+                    "site:x.com"
                 )
 
-            except Exception:
-                company_name = ""
+            elif source == "stocktwits":
 
-            # ------------------------------------------------
-            # 2. 회사명 정리
-            # ------------------------------------------------
-
-            company_name_clean = re.sub(
-                r"\b(Inc\.?|Corp\.?|Corporation|Ltd\.?|PLC|Co\.?|Holdings?)\b",
-                "",
-                company_name,
-                flags=re.IGNORECASE
-            ).strip()
-
-            # ------------------------------------------------
-            # 3. 검색 쿼리 생성
-            #
-            # 티커 + 회사명을 각각 검색
-            # ------------------------------------------------
-
-            search_queries = []
-
-            # Reddit
-            search_queries.append(
-                f'"{ticker_symbol}" stock site:reddit.com'
-            )
-
-            # X
-            search_queries.append(
-                f'"{ticker_symbol}" stock site:x.com'
-            )
-
-            # Stocktwits
-            search_queries.append(
-                f'"{ticker_symbol}" stock site:stocktwits.com'
-            )
-
-            # 회사명이 확보되면 추가 검색
-            if company_name_clean:
-
-                search_queries.append(
-                    f'"{company_name_clean}" stock site:reddit.com'
+                search_query = (
+                    f'"{ticker_symbol}" '
+                    f'"{company_name}" '
+                    "site:stocktwits.com"
                 )
 
-                search_queries.append(
-                    f'"{company_name_clean}" stock site:x.com'
-                )
+            else:
 
-            # ------------------------------------------------
-            # 4. 금융 문맥 키워드
-            # ------------------------------------------------
+                return []
 
-            financial_keywords = [
 
-                "stock",
-                "shares",
-                "share price",
-                "price target",
-                "investor",
-                "investing",
-                "investment",
-                "market",
-                "nasdaq",
-                "nyse",
-                "earnings",
-                "revenue",
-                "guidance",
-                "valuation",
-                "short",
-                "short interest",
-                "short squeeze",
-                "squeeze",
-                "options",
-                "calls",
-                "puts",
-                "bullish",
-                "bearish",
-                "buy",
-                "sell",
-                "long",
-                "position",
-                "portfolio",
-                "trading",
-                "trader",
-                "analyst",
-                "upgrade",
-                "downgrade",
-                "target",
-                "breakout",
-                "dip",
-                "rally",
-                "catalyst",
-                "dilution",
-                "offering",
-                "sec",
-                "10-k",
-                "10-q",
-                "8-k",
-                "institutional",
-                "revenue",
-                "profit",
-                "loss"
-            ]
+            query = urllib.parse.quote(
+                search_query
+            )
 
-            # ------------------------------------------------
-            # 5. 명백한 무관 분야 키워드
-            #
-            # 단, 금융 문맥이 강하면 무조건 제거하지 않음
-            # ------------------------------------------------
+            rss_url = (
+                "https://news.google.com/rss/search"
+                f"?q={query}"
+                "&hl=en-US"
+                "&gl=US"
+                "&ceid=US:en"
+                f"&t={int(time.time())}"
+            )
 
-            irrelevant_keywords = [
-
-                "nba",
-                "nfl",
-                "nhl",
-                "mlb",
-                "fifa",
-                "premier league",
-                "champions league",
-                "basketball",
-                "soccer",
-                "football",
-                "baseball",
-                "hockey",
-                "tennis",
-                "golf",
-                "cricket",
-                "match score",
-                "game score",
-                "box score",
-                "player stats",
-                "roster",
-                "touchdown",
-                "home run",
-                "slam dunk",
-                "quarterback",
-                "goalkeeper"
-            ]
-
-            # ------------------------------------------------
-            # 6. 시간 필터
-            # ------------------------------------------------
-
-            now_kst = datetime.now(
-                timezone(timedelta(hours=9))
+            feed = feedparser.parse(
+                rss_url
             )
 
             two_days_ago = (
-                now_kst - timedelta(days=2)
+                datetime.now(KST)
+                - timedelta(days=2)
             )
 
-            three_days_ago = (
-                now_kst - timedelta(days=3)
-            )
 
-            # ------------------------------------------------
-            # 7. 중복 방지
-            # ------------------------------------------------
+            for entry in feed.entries:
 
-            seen_links = set()
-            seen_titles = set()
-
-            # ------------------------------------------------
-            # 8. 검색 실행
-            # ------------------------------------------------
-
-            for search_term in search_queries:
-
-                query = urllib.parse.quote(
-                    search_term
+                pub_parsed = entry.get(
+                    "published_parsed"
                 )
 
-                rss_url = (
-                    "https://news.google.com/rss/search?"
-                    f"q={query}"
-                    "&hl=en-US"
-                    "&gl=US"
-                    "&ceid=US:en"
-                    f"&t={int(time.time())}"
+                if pub_parsed:
+
+                    dt_kst = (
+                        datetime(
+                            *pub_parsed[:6],
+                            tzinfo=timezone.utc
+                        )
+                        .astimezone(KST)
+                    )
+
+                    if dt_kst < two_days_ago:
+                        continue
+
+
+                title_raw = entry.get(
+                    "title",
+                    ""
                 )
 
-                feed = feedparser.parse(
-                    rss_url
-                )
-
-                for entry in feed.entries:
-
-                    # ----------------------------------------
-                    # 기본 데이터
-                    # ----------------------------------------
-
-                    title_raw = (
-                        entry.get("title", "")
-                        or ""
-                    )
-
-                    summary_raw = (
-                        entry.get("summary", "")
-                        or entry.get("description", "")
-                        or ""
-                    )
-
-                    link = (
-                        entry.get("link", "#")
-                        or "#"
-                    )
-
-                    source_name = ""
-
-                    try:
-                        source_name = (
-                            entry.get("source", {})
-                            .get("title", "")
-                        )
-                    except Exception:
-                        source_name = ""
-
-                    # ----------------------------------------
-                    # 날짜
-                    # ----------------------------------------
-
-                    pub_parsed = entry.get(
-                        "published_parsed"
-                    )
-
-                    entry_dt = None
-
-                    if pub_parsed:
-
-                        try:
-
-                            entry_dt = (
-                                datetime(
-                                    *pub_parsed[:6],
-                                    tzinfo=timezone.utc
-                                )
-                                .astimezone(
-                                    timezone(
-                                        timedelta(hours=9)
-                                    )
-                                )
-                            )
-
-                        except Exception:
-                            entry_dt = None
-
-                    # 너무 오래된 자료 제거
-                    if (
-                        entry_dt
-                        and entry_dt < three_days_ago
-                    ):
-                        continue
-
-                    # ----------------------------------------
-                    # HTML 제거
-                    # ----------------------------------------
-
-                    clean_summary = re.sub(
-                        r"<[^>]*>",
-                        "",
-                        summary_raw
-                    )
-
-                    combined_text = (
-                        f"{title_raw} "
-                        f"{clean_summary} "
-                        f"{source_name}"
-                    ).lower()
-
-                    # ----------------------------------------
-                    # 중복 제거
-                    # ----------------------------------------
-
-                    title_key = re.sub(
-                        r"\s+",
-                        " ",
-                        title_raw.lower()
-                    ).strip()
-
-                    if link in seen_links:
-                        continue
-
-                    if (
-                        title_key
-                        and title_key in seen_titles
-                    ):
-                        continue
-
-                    # ----------------------------------------
-                    # 종목 관련성 검사
-                    # ----------------------------------------
-
-                    ticker_lower = (
-                        ticker_symbol.lower()
-                    )
-
-                    ticker_pattern = (
-                        r"(?<![a-z0-9])"
-                        + re.escape(ticker_lower)
-                        + r"(?![a-z0-9])"
-                    )
-
-                    ticker_match = bool(
-                        re.search(
-                            ticker_pattern,
-                            combined_text
-                        )
-                    )
-
-                    company_match = False
-
-                    if company_name_clean:
-
-                        company_lower = (
-                            company_name_clean.lower()
-                        )
-
-                        company_match = (
-                            company_lower
-                            in combined_text
-                        )
-
-                    # 티커도 회사명도 없으면 제거
-                    if (
-                        not ticker_match
-                        and not company_match
-                    ):
-                        continue
-
-                    # ----------------------------------------
-                    # 금융 문맥 검사
-                    # ----------------------------------------
-
-                    financial_match = any(
-                        keyword in combined_text
-                        for keyword in financial_keywords
-                    )
-
-                    # 금융 문맥이 전혀 없으면 제거
-                    if not financial_match:
-                        continue
-
-                    # ----------------------------------------
-                    # 스포츠 등 명백한 무관 분야 검사
-                    # ----------------------------------------
-
-                    irrelevant_match = any(
-                        keyword in combined_text
-                        for keyword in irrelevant_keywords
-                    )
-
-                    if irrelevant_match:
-
-                        # 스포츠 키워드가 있어도
-                        # 금융 문맥이 매우 강하면 허용
-                        strong_finance_keywords = [
-
-                            "stock",
-                            "shares",
-                            "share price",
-                            "earnings",
-                            "revenue",
-                            "valuation",
-                            "short interest",
-                            "short squeeze",
-                            "options",
-                            "price target",
-                            "analyst",
-                            "nasdaq",
-                            "nyse",
-                            "sec filing"
-                        ]
-
-                        strong_finance_match = any(
-                            keyword in combined_text
-                            for keyword
-                            in strong_finance_keywords
-                        )
-
-                        if not strong_finance_match:
-                            continue
-
-                    # ----------------------------------------
-                    # 출처 검사
-                    # ----------------------------------------
-
-                    link_lower = link.lower()
-
-                    is_reddit = (
-                        "reddit.com"
-                        in link_lower
-                    )
-
-                    is_x = (
-                        "x.com"
-                        in link_lower
-                        or "twitter.com"
-                        in link_lower
-                    )
-
-                    is_stocktwits = (
-                        "stocktwits.com"
-                        in link_lower
-                    )
-
-                    # 검색 쿼리 자체가 해당 사이트를
-                    # 대상으로 했으므로 어느 하나라도
-                    # 확인되면 통과
-                    if not (
-                        is_reddit
-                        or is_x
-                        or is_stocktwits
-                    ):
-
-                        # Google이 source 정보를 제공하는
-                        # 경우 source_name도 검사
-                        source_lower = (
-                            source_name.lower()
-                        )
-
-                        if not any(
-                            domain in source_lower
-                            for domain in [
-                                "reddit",
-                                "x",
-                                "twitter",
-                                "stocktwits"
-                            ]
-                        ):
-                            continue
-
-                    # ----------------------------------------
-                    # 최근 48시간 자료를 우선
-                    # ----------------------------------------
-
-                    priority = 1
-
-                    if (
-                        entry_dt
-                        and entry_dt >= two_days_ago
-                    ):
-                        priority = 2
-
-                    # ----------------------------------------
-                    # 번역
-                    # ----------------------------------------
-
-                    title = (
-                        QuantEngine
-                        .professional_translate(
-                            title_raw
-                        )
-                    )
-
-                    summary = (
-                        QuantEngine
-                        .professional_translate(
-                            clean_summary
-                        )
-                    )
-
-                    # ----------------------------------------
-                    # 출처 표시
-                    # ----------------------------------------
-
-                    if is_reddit:
-                        source_label = "Reddit"
-
-                    elif is_x:
-                        source_label = "X"
-
-                    elif is_stocktwits:
-                        source_label = "Stocktwits"
-
-                    else:
-                        source_label = (
-                            source_name
-                            or "Social"
-                        )
-
-                    title = (
-                        f"[{source_label}] {title}"
-                    )
-
-                    # ----------------------------------------
-                    # 결과 저장
-                    # ----------------------------------------
-
-                    social_list.append(
-                        {
-                            "priority": priority,
-                            "date": (
-                                entry_dt.timestamp()
-                                if entry_dt
-                                else 0
-                            ),
-                            "title": title,
-                            "summary": summary,
-                            "pub": (
-                                QuantEngine
-                                .convert_to_kst_string(
-                                    pub_parsed
-                                )
-                            ),
-                            "link": link
-                        }
-                    )
-
-                    seen_links.add(link)
-
-                    if title_key:
-                        seen_titles.add(
-                            title_key
-                        )
-
-            # =================================================
-            # 9. 정렬
-            #
-            # 48시간 이내 → 최신순
-            # =================================================
-
-            social_list.sort(
-                key=lambda x: (
-                    x["priority"],
-                    x["date"]
-                ),
-                reverse=True
-            )
-
-            # =================================================
-            # 10. 최종 4개
-            # =================================================
-
-            final_results = []
-
-            for item in social_list[:4]:
-
-                summary_text = (
-                    item["summary"]
-                    or ""
-                )
-
-                if len(summary_text) > 180:
-                    summary_text = (
-                        summary_text[:180]
-                        + "..."
-                    )
-
-                final_results.append(
-                    (
-                        item["title"],
-                        summary_text,
-                        item["pub"],
-                        item["link"]
+                summary_raw = (
+                    entry.get("summary", "")
+                    or entry.get(
+                        "description",
+                        ""
                     )
                 )
 
-            if final_results:
-                return final_results
+
+                combined_text = (
+                    title_raw
+                    + " "
+                    + summary_raw
+                )
+
+                combined_text = re.sub(
+                    r"<[^>]*>",
+                    " ",
+                    combined_text
+                )
+
+                combined_text = re.sub(
+                    r"\s+",
+                    " ",
+                    combined_text
+                ).strip()
+
+
+                # -------------------------------------
+                # 관련성 점수
+                # -------------------------------------
+
+                relevance = (
+                    QuantEngine
+                    .social_relevance_score(
+                        combined_text,
+                        ticker_symbol,
+                        company_name
+                    )
+                )
+
+
+                # -------------------------------------
+                # 최소 관련성
+                # -------------------------------------
+
+                if relevance < 40:
+                    continue
+
+
+                title = (
+                    QuantEngine
+                    .professional_translate(
+                        title_raw
+                    )
+                )
+
+                summary_clean = re.sub(
+                    r"<[^>]*>",
+                    "",
+                    summary_raw
+                )
+
+                summary = (
+                    QuantEngine
+                    .professional_translate(
+                        summary_clean
+                    )
+                )
+
+
+                # 플랫폼 이름
+                source_label = {
+                    "reddit": "Reddit",
+                    "x": "X",
+                    "stocktwits": "Stocktwits"
+                }.get(
+                    source,
+                    source
+                )
+
+
+                results.append(
+                    {
+                        "title": title,
+                        "summary": summary,
+                        "pub": QuantEngine.convert_to_kst_string(
+                            pub_parsed
+                        ),
+                        "link": entry.get(
+                            "link",
+                            "#"
+                        ),
+                        "source": source_label,
+                        "score": relevance
+                    }
+                )
+
 
         except Exception:
             pass
 
-        # =====================================================
-        # 결과가 없을 때
-        # =====================================================
 
-        return [
-            (
-                f"[{ticker_symbol}] "
-                "최근 X / Reddit / Stocktwits 관련 "
-                "논의가 없습니다.",
-                "",
-                "방금 전",
-                "#"
-            )
-        ]
+        return results
 
 
-    # ========================================================
-    # BACKTEST
-    # ========================================================
+    # =====================================================
+    # X + Reddit + Stocktwits 통합
+    # =====================================================
 
     @staticmethod
-    def run_backtest(ticker_symbol: str):
+    def get_social_gossip(
+        ticker_symbol,
+        company_name
+    ):
+
+        all_results = []
+
+        sources = [
+            "reddit",
+            "x",
+            "stocktwits"
+        ]
+
+        for source in sources:
+
+            results = (
+                QuantEngine
+                .fetch_social_feed(
+                    ticker_symbol,
+                    company_name,
+                    source
+                )
+            )
+
+            all_results.extend(results)
+
+
+        # ---------------------------------------------
+        # 중복 제거
+        # ---------------------------------------------
+
+        unique_results = []
+
+        seen_titles = set()
+
+        for item in all_results:
+
+            normalized_title = re.sub(
+                r"[^a-z0-9]",
+                "",
+                item["title"].lower()
+            )
+
+            if normalized_title in seen_titles:
+                continue
+
+            seen_titles.add(
+                normalized_title
+            )
+
+            unique_results.append(
+                item
+            )
+
+
+        # ---------------------------------------------
+        # 관련성 + 최신순
+        # ---------------------------------------------
+
+        unique_results.sort(
+            key=lambda x: x["score"],
+            reverse=True
+        )
+
+
+        # ---------------------------------------------
+        # 최대 6개
+        # ---------------------------------------------
+
+        unique_results = unique_results[:6]
+
+
+        if not unique_results:
+
+            return [
+                {
+                    "title": (
+                        f"[{ticker_symbol}] "
+                        "최근 X/Reddit 관련 "
+                        "정보를 찾지 못했습니다."
+                    ),
+                    "summary": (
+                        "검색 결과가 부족하거나 "
+                        "종목과 직접적인 관련성이 "
+                        "낮은 결과는 표시하지 않았습니다."
+                    ),
+                    "pub": "최근",
+                    "link": "#",
+                    "source": "검색",
+                    "score": 0
+                }
+            ]
+
+
+        return unique_results
+
+
+    # =====================================================
+    # 백테스트
+    # =====================================================
+
+    @staticmethod
+    def run_backtest(ticker_symbol):
 
         try:
 
@@ -1114,7 +1071,13 @@ class QuantEngine:
             )
 
             if df.empty or len(df) < 50:
-                return 1906.4, 64.3, -20.6
+
+                return (
+                    0.0,
+                    0.0,
+                    0.0
+                )
+
 
             close = df["Close"]
 
@@ -1122,6 +1085,7 @@ class QuantEngine:
                 span=20,
                 adjust=False
             ).mean()
+
 
             strategy_ret = (
                 close
@@ -1133,6 +1097,7 @@ class QuantEngine:
                 )
             )
 
+
             total_return = float(
                 (
                     (
@@ -1141,9 +1106,13 @@ class QuantEngine:
                 ) * 100
             )
 
-            active_returns = strategy_ret[
-                strategy_ret != 0
-            ]
+
+            active_returns = (
+                strategy_ret[
+                    strategy_ret != 0
+                ]
+            )
+
 
             if len(active_returns) > 0:
 
@@ -1154,19 +1123,24 @@ class QuantEngine:
                 )
 
             else:
-                win_rate = 64.3
+
+                win_rate = 0.0
+
 
             equity = (
                 1 + strategy_ret
             ).cumprod()
 
-            mdd = float(
-                (
-                    equity
-                    / equity.cummax()
-                    - 1
-                ).min() * 100
+            drawdown = (
+                equity
+                / equity.cummax()
+                - 1
             )
+
+            mdd = float(
+                drawdown.min() * 100
+            )
+
 
             return (
                 total_return,
@@ -1174,19 +1148,24 @@ class QuantEngine:
                 mdd
             )
 
+
         except Exception:
 
-            return 1906.4, 64.3, -20.6
+            return (
+                0.0,
+                0.0,
+                0.0
+            )
 
 
-    # ========================================================
-    # MARKET DATA
-    # ========================================================
+    # =====================================================
+    # 시장 데이터
+    # =====================================================
 
     @staticmethod
     def fetch_market_data(
-        ticker_symbol: str,
-        timeframe: str = "1D"
+        ticker_symbol,
+        timeframe="1D"
     ):
 
         try:
@@ -1197,26 +1176,42 @@ class QuantEngine:
 
             info = ticker_obj.info
 
-            data = ticker_obj.history(
-                period=(
-                    "1y"
-                    if timeframe == "1D"
-                    else "5d"
-                ),
-                interval=(
-                    "1d"
-                    if timeframe == "1D"
-                    else "15m"
+
+            # -----------------------------------------
+            # 데이터
+            # -----------------------------------------
+
+            if timeframe == "1D":
+
+                data = ticker_obj.history(
+                    period="1y",
+                    interval="1d"
                 )
-            )
+
+            elif timeframe == "1H":
+
+                data = ticker_obj.history(
+                    period="5d",
+                    interval="1h"
+                )
+
+            else:
+
+                data = ticker_obj.history(
+                    period="5d",
+                    interval="15m"
+                )
+
 
             if data.empty:
                 return None
+
 
             close = data["Close"]
             high = data["High"]
             low = data["Low"]
             volume = data["Volume"]
+
 
             curr_price = float(
                 close.iloc[-1]
@@ -1228,13 +1223,20 @@ class QuantEngine:
                 else close.iloc[-1]
             )
 
+
             price_change_p = (
                 (
                     curr_price
                     - prev_price
                 )
                 / prev_price
-            ) * 100
+                * 100
+            )
+
+
+            # -----------------------------------------
+            # ATR
+            # -----------------------------------------
 
             atr = float(
                 (
@@ -1242,6 +1244,7 @@ class QuantEngine:
                     - low.tail(14)
                 ).mean()
             )
+
 
             stop_loss = (
                 curr_price
@@ -1253,10 +1256,16 @@ class QuantEngine:
                 + atr * 2.5
             )
 
+
+            # -----------------------------------------
+            # EMA
+            # -----------------------------------------
+
             ema20 = close.ewm(
                 span=20,
                 adjust=False
             ).mean()
+
 
             ema50 = (
                 close.ewm(
@@ -1267,6 +1276,7 @@ class QuantEngine:
                 else ema20
             )
 
+
             ema200 = (
                 close.ewm(
                     span=200,
@@ -1275,6 +1285,11 @@ class QuantEngine:
                 if len(close) >= 200
                 else ema50
             )
+
+
+            # -----------------------------------------
+            # RSI
+            # -----------------------------------------
 
             delta = close.diff()
 
@@ -1297,34 +1312,58 @@ class QuantEngine:
                 / (loss + 1e-9)
             )
 
-            rsi = float(
-                (
+            rsi_series = (
+                100
+                - (
                     100
-                    - (
-                        100
-                        / (1 + rs)
-                    )
-                ).iloc[-1]
+                    / (1 + rs)
+                )
             )
+
+            rsi = float(
+                rsi_series.iloc[-1]
+            )
+
+
+            # -----------------------------------------
+            # Short
+            # -----------------------------------------
 
             short_ratio = info.get(
                 "shortPercentOfFloat",
-                0.05
+                None
             )
 
-            (
-                bt_ret,
-                bt_win,
-                bt_mdd
-            ) = QuantEngine.run_backtest(
-                ticker_symbol
+
+            if short_ratio is not None:
+
+                short_ratio_display = (
+                    f"{short_ratio * 100:.1f}%"
+                )
+
+            else:
+
+                short_ratio_display = "N/A"
+
+
+            # -----------------------------------------
+            # 백테스트
+            # -----------------------------------------
+
+            bt_ret, bt_win, bt_mdd = (
+                QuantEngine
+                .run_backtest(
+                    ticker_symbol
+                )
             )
 
-            # ------------------------------------------------
+
+            # -----------------------------------------
             # 점수
-            # ------------------------------------------------
+            # -----------------------------------------
 
             score = 40
+
 
             if (
                 len(close) >= 200
@@ -1343,6 +1382,7 @@ class QuantEngine:
 
                 score -= 20
 
+
             if 45 <= rsi <= 60:
 
                 score += 20
@@ -1355,14 +1395,15 @@ class QuantEngine:
 
                 score -= 25
 
+
             avg_volume_20 = (
                 volume.tail(20).mean()
             )
 
+
             if (
-                avg_volume_20
-                * curr_price
-                < 10000000
+                avg_volume_20 * curr_price
+                < 10_000_000
             ):
 
                 score -= 25
@@ -1371,13 +1412,16 @@ class QuantEngine:
 
                 score += 10
 
+
             disparity = (
                 (
                     curr_price
                     - ema20.iloc[-1]
                 )
                 / ema20.iloc[-1]
-            ) * 100
+                * 100
+            )
+
 
             if disparity > 10:
 
@@ -1387,19 +1431,28 @@ class QuantEngine:
 
                 score -= 10
 
+
             score = max(
                 0,
-                min(100, score)
+                min(
+                    100,
+                    score
+                )
             )
+
+
+            company_name = (
+                info.get("longName")
+                or info.get("shortName")
+                or ticker_symbol
+            )
+
 
             return {
 
                 "ticker": ticker_symbol,
 
-                "company_name": info.get(
-                    "longName",
-                    ticker_symbol
-                ),
+                "company_name": company_name,
 
                 "curr_price": curr_price,
 
@@ -1428,11 +1481,8 @@ class QuantEngine:
 
                 "rsi": rsi,
 
-                "short_ratio": (
-                    f"{short_ratio * 100:.1f}%"
-                    if short_ratio
-                    else "N/A"
-                ),
+                "short_ratio":
+                    short_ratio_display,
 
                 "bt_ret": bt_ret,
 
@@ -1445,14 +1495,15 @@ class QuantEngine:
                 "data": data
             }
 
-        except Exception:
+
+        except Exception as e:
 
             return None
 
 
-# ============================================================
-# SESSION STATE
-# ============================================================
+# =========================================================
+# Session State
+# =========================================================
 
 if "selected_ticker" not in st.session_state:
 
@@ -1468,11 +1519,12 @@ if "timeframe" not in st.session_state:
     ] = "1D"
 
 
-# ============================================================
-# URL QUERY PARAMETER
-# ============================================================
+# =========================================================
+# URL Parameters
+# =========================================================
 
 query_params = st.query_params
+
 
 if "q" in query_params:
 
@@ -1488,13 +1540,12 @@ if "tf" in query_params:
     ] = query_params["tf"].upper()
 
 
-# ============================================================
+# =========================================================
 # 우측 상단 메뉴
-# ============================================================
+# =========================================================
 
-_, col_popover = st.columns(
-    [10, 1]
-)
+_, col_popover = st.columns([10, 1])
+
 
 with col_popover:
 
@@ -1515,13 +1566,14 @@ with col_popover:
             pass
 
 
-# ============================================================
-# 중앙 로고
-# ============================================================
+# =========================================================
+# 로고
+# =========================================================
 
 col_b1, col_b2, col_b3 = st.columns(
     [1, 2, 1]
 )
+
 
 with col_b2:
 
@@ -1534,15 +1586,13 @@ with col_b2:
         st.markdown(
             f"""
             <div style="
-                display:flex;
-                justify-content:center;
-                align-items:center;
-                padding:10px 0 20px 0;
+                text-align:center;
+                margin-bottom:15px;
             ">
                 <img
                     src="{main_logo}"
                     style="
-                        max-width:260px;
+                        max-width:240px;
                         width:100%;
                         height:auto;
                     "
@@ -1556,45 +1606,40 @@ with col_b2:
 
         st.markdown(
             """
-            <div style="
+            <h1 style="
                 text-align:center;
-                font-size:30px;
-                font-weight:900;
-                padding:20px;
+                color:#F8FAFC;
             ">
                 TAURUS LAB
-            </div>
+            </h1>
             """,
             unsafe_allow_html=True
         )
 
 
-# ============================================================
-# MARKET OVERVIEW
-# ============================================================
+# =========================================================
+# Market Overview
+# =========================================================
 
 st.markdown(
     f"""
     <div class="dashboard-header">
         <div style="
-            font-size:16px;
-            font-weight:800;
-            margin-bottom:6px;
+            font-size:13px;
+            font-weight:700;
+            color:#94A3B8;
         ">
             📊 Market Overview
         </div>
 
         <div style="
-            color:#94A3B8;
-            font-size:13px;
+            font-size:15px;
+            font-weight:800;
+            color:#F8FAFC;
+            margin-top:5px;
         ">
             나스닥 선물:
-            <span style="
-                color:#F8FAFC;
-                font-weight:700;
-            ">
-                {QuantEngine.get_nasdaq_futures()}
-            </span>
+            {QuantEngine.get_nasdaq_futures()}
         </div>
     </div>
     """,
@@ -1602,13 +1647,14 @@ st.markdown(
 )
 
 
-# ============================================================
-# SEARCH
-# ============================================================
+# =========================================================
+# 종목 검색
+# =========================================================
 
 col_search, _ = st.columns(
     [2.0, 3.0]
 )
+
 
 with col_search:
 
@@ -1629,16 +1675,16 @@ if (
         "selected_ticker"
     ] = selected_ticker_result.upper()
 
-    st.query_params[
-        "q"
-    ] = selected_ticker_result.upper()
+    st.query_params["q"] = (
+        selected_ticker_result.upper()
+    )
 
     st.rerun()
 
 
-# ============================================================
-# MARKET DATA
-# ============================================================
+# =========================================================
+# 시장 데이터
+# =========================================================
 
 res = QuantEngine.fetch_market_data(
     st.session_state["selected_ticker"],
@@ -1646,28 +1692,33 @@ res = QuantEngine.fetch_market_data(
 )
 
 
-# ============================================================
-# MAIN
-# ============================================================
+# =========================================================
+# 결과 출력
+# =========================================================
 
 if res:
+
+    # ---------------------------------------------
+    # 종목명
+    # ---------------------------------------------
 
     col_title, col_btn = st.columns(
         [3.0, 1.0]
     )
 
+
     with col_title:
 
         st.markdown(
             f"""
-            <div style="
-                font-size:22px;
-                font-weight:900;
+            <h2 style="
                 color:#F8FAFC;
-                padding:8px 0 10px 0;
+                font-size:22px;
+                margin-bottom:5px;
             ">
-                [{res['ticker']}] {res['company_name']}
-            </div>
+                [{res["ticker"]}]
+                {res["company_name"]}
+            </h2>
             """,
             unsafe_allow_html=True
         )
@@ -1688,9 +1739,7 @@ if res:
                 <a
                     href="https://earnings.kr/"
                     target="_blank"
-                    style="
-                        text-decoration:none;
-                    "
+                    style="text-decoration:none;"
                 >
 
                     <div style="
@@ -1701,12 +1750,10 @@ if res:
                         display:inline-flex;
                         align-items:center;
                         gap:8px;
-                        cursor:pointer;
                     ">
 
                         <span style="
                             font-size:15px;
-                            line-height:1;
                         ">
                             📢
                         </span>
@@ -1715,7 +1762,6 @@ if res:
                             color:#F8FAFC;
                             font-size:13px;
                             font-weight:600;
-                            letter-spacing:-0.3px;
                         ">
                             실적발표 보러가기
                         </span>
@@ -1730,17 +1776,21 @@ if res:
         )
 
 
-    # ========================================================
-    # SCORE
-    # ========================================================
+    # ---------------------------------------------
+    # 점수
+    # ---------------------------------------------
 
     score = res["score"]
+
 
     if score >= 70:
 
         box_bg = (
             "linear-gradient("
-            "135deg, #00E676, #00C853)"
+            "135deg,"
+            "#00E676,"
+            "#00C853"
+            ")"
         )
 
         text_color = "#000000"
@@ -1752,11 +1802,15 @@ if res:
 
         status_color = "#00E676"
 
+
     elif score >= 40:
 
         box_bg = (
             "linear-gradient("
-            "135deg, #F59E0B, #D97706)"
+            "135deg,"
+            "#F59E0B,"
+            "#D97706"
+            ")"
         )
 
         text_color = "#000000"
@@ -1768,11 +1822,15 @@ if res:
 
         status_color = "#F59E0B"
 
+
     else:
 
         box_bg = (
             "linear-gradient("
-            "135deg, #EF4444, #DC2626)"
+            "135deg,"
+            "#EF4444,"
+            "#DC2626"
+            ")"
         )
 
         text_color = "#FFFFFF"
@@ -1804,11 +1862,12 @@ if res:
     )
 
 
-    # ========================================================
-    # METRICS
-    # ========================================================
+    # ---------------------------------------------
+    # Metrics
+    # ---------------------------------------------
 
     col1, col2, col3, col4 = st.columns(4)
+
 
     col1.metric(
         "현재가",
@@ -1816,15 +1875,18 @@ if res:
         f"{res['price_change_p']:+.2f}%"
     )
 
+
     col2.metric(
         "보수적 목표가 (TP)",
         f"${res['take_profit']}"
     )
 
+
     col3.metric(
         "타이트 손절가 (SL)",
         f"${res['stop_loss']}"
     )
+
 
     col4.metric(
         "공매도 비율",
@@ -1834,20 +1896,24 @@ if res:
 
     col5, col6, col7, col8 = st.columns(4)
 
+
     col5.metric(
         "RSI (14)",
         f"{res['rsi']:.1f}"
     )
+
 
     col6.metric(
         "1년 백테스트",
         f"{res['bt_ret']:+.1f}%"
     )
 
+
     col7.metric(
         "전략 승률",
         f"{res['bt_win']:.1f}%"
     )
+
 
     col8.metric(
         "최대 낙폭",
@@ -1859,6 +1925,7 @@ if res:
         "<br>",
         unsafe_allow_html=True
     )
+
 
     st.markdown(
         f"""
@@ -1875,13 +1942,14 @@ if res:
     )
 
 
-    # ========================================================
-    # TECHNICAL CHART
-    # ========================================================
+    # =====================================================
+    # 차트 제목 + 시간 프레임
+    # =====================================================
 
     c_title, c_tf = st.columns(
         [3.5, 1.5]
     )
+
 
     with c_title:
 
@@ -1905,6 +1973,7 @@ if res:
             st.session_state["timeframe"]
         )
 
+
         tf_1d_bg = (
             "#1E293B"
             if current_tf == "1D"
@@ -1917,6 +1986,7 @@ if res:
             else "#94A3B8"
         )
 
+
         tf_1h_bg = (
             "#1E293B"
             if current_tf == "1H"
@@ -1928,6 +1998,7 @@ if res:
             if current_tf == "1H"
             else "#94A3B8"
         )
+
 
         tf_15m_bg = (
             "#1E293B"
@@ -1942,6 +2013,11 @@ if res:
         )
 
 
+        ticker_for_url = (
+            res["ticker"]
+        )
+
+
         tf_html = f"""
         <div style="
             display:flex;
@@ -1953,7 +2029,7 @@ if res:
             <button
                 onclick="
                     window.parent.location.search =
-                    '?q={res['ticker']}&tf=1D'
+                    '?q={ticker_for_url}&tf=1D'
                 "
                 style="
                     background-color:{tf_1d_bg};
@@ -1969,10 +2045,11 @@ if res:
                 1D
             </button>
 
+
             <button
                 onclick="
                     window.parent.location.search =
-                    '?q={res['ticker']}&tf=1H'
+                    '?q={ticker_for_url}&tf=1H'
                 "
                 style="
                     background-color:{tf_1h_bg};
@@ -1988,10 +2065,11 @@ if res:
                 1H
             </button>
 
+
             <button
                 onclick="
                     window.parent.location.search =
-                    '?q={res['ticker']}&tf=15M'
+                    '?q={ticker_for_url}&tf=15M'
                 "
                 style="
                     background-color:{tf_15m_bg};
@@ -2010,15 +2088,16 @@ if res:
         </div>
         """
 
+
         components.html(
             tf_html,
             height=45
         )
 
 
-    # ========================================================
-    # CHART
-    # ========================================================
+    # =====================================================
+    # 차트
+    # =====================================================
 
     fig, ax = plt.subplots(
         figsize=(14, 4.5),
@@ -2029,7 +2108,9 @@ if res:
         "#121824"
     )
 
+
     df = res["data"]
+
 
     ax.plot(
         df.index,
@@ -2038,6 +2119,7 @@ if res:
         color="#00E676",
         linewidth=1.5
     )
+
 
     ax.plot(
         df.index,
@@ -2048,6 +2130,7 @@ if res:
         linestyle="--"
     )
 
+
     ax.plot(
         df.index,
         res["ema50"],
@@ -2056,6 +2139,7 @@ if res:
         linewidth=1,
         linestyle="--"
     )
+
 
     ax.plot(
         df.index,
@@ -2066,10 +2150,12 @@ if res:
         linestyle="--"
     )
 
+
     ax.tick_params(
         colors="#94A3B8",
         labelsize=9
     )
+
 
     ax.grid(
         color="#1E293B",
@@ -2077,11 +2163,13 @@ if res:
         linewidth=0.5
     )
 
+
     for spine in ax.spines.values():
 
         spine.set_color(
             "#1E293B"
         )
+
 
     ax.legend(
         loc="upper left",
@@ -2091,16 +2179,19 @@ if res:
         fontsize=9
     )
 
+
     fig.tight_layout()
 
+
     st.pyplot(
-        fig
+        fig,
+        use_container_width=True
     )
 
 
-    # ========================================================
-    # NEWS / SOCIAL TABS
-    # ========================================================
+    # =====================================================
+    # 뉴스 / 찌라시
+    # =====================================================
 
     tab_news, tab_gossip = st.tabs(
         [
@@ -2110,22 +2201,21 @@ if res:
     )
 
 
-    # ========================================================
-    # GOOGLE NEWS
-    # ========================================================
+    # =====================================================
+    # 뉴스
+    # =====================================================
 
     with tab_news:
 
-        news = QuantEngine.get_google_news(
-            res["ticker"]
+        news = (
+            QuantEngine
+            .get_google_news(
+                res["ticker"]
+            )
         )
 
-        for (
-            title,
-            summary,
-            pub,
-            link
-        ) in news:
+
+        for title, summary, pub, link in news:
 
             st.markdown(
                 f"""
@@ -2169,30 +2259,61 @@ if res:
             )
 
 
-    # ========================================================
-    # SOCIAL
-    # ========================================================
+    # =====================================================
+    # X / Reddit
+    # =====================================================
 
     with tab_gossip:
 
-        gossip = QuantEngine.get_social_gossip(
-            res["ticker"]
+        st.caption(
+            "종목 티커 + 회사명을 기준으로 관련성이 낮은 "
+            "검색 결과는 자동 제외합니다."
         )
 
-        for (
-            title,
-            summary,
-            pub,
-            link
-        ) in gossip:
+
+        gossip = (
+            QuantEngine
+            .get_social_gossip(
+                res["ticker"],
+                res["company_name"]
+            )
+        )
+
+
+        for item in gossip:
+
+            source = item["source"]
+
+            if source == "Reddit":
+                icon = "🔴"
+
+            elif source == "X":
+                icon = "⚫"
+
+            elif source == "Stocktwits":
+                icon = "🟠"
+
+            else:
+                icon = "💬"
+
 
             st.markdown(
                 f"""
                 <div class="news-card">
 
-                    💬
+                    {icon}
+                    <span style="
+                        color:#64748B;
+                        font-size:10px;
+                        font-weight:700;
+                    ">
+                        {source}
+                    </span>
+
+                    &nbsp;
+
                     <a
-                        href="{link}"
+                        href="{item['link']}"
                         target="_blank"
                         style="
                             color:#00E676;
@@ -2201,7 +2322,7 @@ if res:
                             font-size:13px;
                         "
                     >
-                        {title}
+                        {item['title']}
                     </a>
 
                     <br>
@@ -2210,7 +2331,7 @@ if res:
                         color:#94A3B8;
                         font-size:11px;
                     ">
-                        ⏱ {pub}
+                        ⏱ {item['pub']}
                     </span>
 
                     <br>
@@ -2219,7 +2340,7 @@ if res:
                         color:#CBD5E1;
                         font-size:12px;
                     ">
-                        {summary}
+                        {item['summary'][:220]}
                     </span>
 
                 </div>
@@ -2233,4 +2354,3 @@ else:
     st.error(
         "데이터를 불러오지 못했습니다."
     )
-```
