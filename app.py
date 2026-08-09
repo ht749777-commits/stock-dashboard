@@ -326,16 +326,20 @@ with col_search:
 res = QuantEngine.fetch_market_data(st.session_state['selected_ticker'], st.session_state['timeframe'])
 
 if res:
-    # 귀여운 실적발표 확인 버튼 배치 (종목명 옆)
-    earnings_btn_html = f"""
-    <a href="https://earnings.kr/" target="_blank" style="text-decoration: none;">
-        <span style="background-color: #1E293B; color: #38BDF8; font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 20px; border: 1px solid #334155; margin-left: 12px; display: inline-flex; align-items: center; gap: 4px; transition: 0.2s;">
-            📅 실적발표 확인하기
-        </span>
-    </a>
-    """
-
-    st.markdown(f"<h3 style='color: #F8FAFC; margin-bottom: 5px; display: flex; align-items: center;'><span>[{res['ticker']}] {res['company_name']}</span>{earnings_btn_html}</h3>", unsafe_allow_html=True)
+    # ── [수정] 종목명과 우측 끝 실적발표캘린더 버튼 레이아웃 ──
+    col_title, col_btn = st.columns([3.0, 1.0])
+    with col_title:
+        st.markdown(f"<h3 style='color: #F8FAFC; margin-bottom: 5px;'>[{res['ticker']}] {res['company_name']}</h3>", unsafe_allow_html=True)
+    with col_btn:
+        st.markdown("""
+            <div style="display: flex; justify-content: flex-end; align-items: center; height: 100%; padding-top: 5px;">
+                <a href="https://earnings.kr/" target="_blank" style="text-decoration: none;">
+                    <span style="background-color: #1E293B; color: #38BDF8; font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 20px; border: 1px solid #334155; display: inline-flex; align-items: center; gap: 4px;">
+                        📅 실적발표캘린더
+                    </span>
+                </a>
+            </div>
+        """, unsafe_allow_html=True)
     
     score = res['score']
     
