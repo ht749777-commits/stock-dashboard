@@ -427,7 +427,7 @@ margin-bottom: 20px;
 <h1 style="color: #FF2A2A; margin: 0; font-size: 32px; font-weight: 900; letter-spacing: 2px;">TAURUS LAB</h1>
 </div>""", unsafe_allow_html=True)
 
-# ── [Market Overview 영역 (components.html을 통한 안전한 렌더링)] ──
+# ── [Market Overview 영역 (게임 아이템 툴팁 스타일)] ──
 market_data = QuantEngine.get_market_overview_data()
 
 nq_val, nq_chg = market_data["NQ"]
@@ -451,27 +451,23 @@ market_component_html = f"""
         position: relative;
         width: 100%;
         background-color: #121824;
-        border-radius: 10px;
+        border-radius: 8px;
         border: 1px solid #1E293B;
         box-sizing: border-box;
-        transition: border-color 0.2s ease;
-    }}
-    .market-overview-container:hover {{
-        border-color: #00E676;
     }}
     .market-bar {{
         display: flex;
         align-items: center;
         height: 48px;
-        padding: 0 18px;
+        padding: 0 16px;
         cursor: pointer;
     }}
     .market-title-badge {{
         color: #00E676; 
         font-weight: 900; 
-        font-size: 15px; 
+        font-size: 14px; 
         white-space: nowrap;
-        margin-right: 20px;
+        margin-right: 15px;
         display: flex;
         align-items: center;
     }}
@@ -516,37 +512,44 @@ market_component_html = f"""
         92% {{ top: -120px; }}
         100% {{ top: -144px; }}
     }}
+    /* 게임 아이템 툴팁(Tooltip) 스타일 */
     .dropdown-panel {{
         display: none;
         position: absolute;
-        top: 52px;
+        top: 54px;
         left: 0;
-        width: 100%;
-        background-color: #121824;
-        border: 1px solid #1E293B;
-        border-radius: 10px;
-        padding: 12px 18px;
+        width: 380px;
+        background-color: rgba(13, 17, 23, 0.96);
+        border: 1px solid #334155;
+        border-radius: 6px;
+        padding: 14px 16px;
         box-sizing: border-box;
-        box-shadow: 0 15px 35px rgba(0,0,0,0.8);
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.85);
         z-index: 999;
+        backdrop-filter: blur(6px);
     }}
     .market-overview-container:hover .dropdown-panel {{
         display: block;
+    }}
+    .tooltip-header {{
+        color: #00E676;
+        font-weight: 800;
+        font-size: 13px;
+        margin-bottom: 8px;
+        border-bottom: 1px solid #1E293B;
+        padding-bottom: 6px;
+        letter-spacing: -0.2px;
     }}
     .grid-row {{
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 5px 0;
-        border-bottom: 1px solid #1E293B;
-        font-size: 13px;
-    }}
-    .grid-row:last-child {{
-        border-bottom: none;
+        padding: 4px 0;
+        font-size: 12px;
     }}
     .label-name {{
         color: #94A3B8;
-        font-weight: 600;
+        font-weight: 500;
     }}
     .label-val {{
         color: #F8FAFC;
@@ -557,7 +560,7 @@ market_component_html = f"""
 <body>
 <div class="market-overview-container">
     <div class="market-bar">
-        <div class="market-title-badge">📊 Market Overview <span style="font-size:11px; color:#64748B; margin-left:8px; font-weight:normal;">(마우스 오버시 전체보기)</span></div>
+        <div class="market-title-badge">📊 Market Overview <span style="font-size:11px; color:#64748B; margin-left:6px; font-weight:normal;">(아이템 정보 보기)</span></div>
         <div class="ticker-slider-window">
             <ul class="ticker-slider-list">
                 <li class="ticker-item">나스닥 100 선물: <b style="color:#F8FAFC;">{nq_val:,.2f}</b> <span style="color:{'#00E676' if nq_chg>=0 else '#EF4444'};">({nq_chg:+.2f}%)</span></li>
@@ -572,37 +575,37 @@ market_component_html = f"""
     </div>
     
     <div class="dropdown-panel">
-        <div style="color: #00E676; font-weight: 800; font-size: 13px; margin-bottom: 6px;">🔥 실시간 주요 마켓 지표 요약</div>
+        <div class="tooltip-header">⚔️ [유물] 실시간 글로벌 마켓 브리프</div>
         <div class="grid-row">
             <span class="label-name">나스닥 100 선물</span>
-            <div><span class="label-val">{nq_val:,.2f}</span> <span style="color:{'#00E676' if nq_chg>=0 else '#EF4444'}; font-size:12px;">({nq_chg:+.2f}%)</span></div>
+            <div><span class="label-val">{nq_val:,.2f}</span> <span style="color:{'#00E676' if nq_chg>=0 else '#EF4444'}; font-size:11px;">({nq_chg:+.2f}%)</span></div>
         </div>
         <div class="grid-row">
             <span class="label-name">S&P 500 선물</span>
-            <div><span class="label-val">{es_val:,.2f}</span> <span style="color:{'#00E676' if es_chg>=0 else '#EF4444'}; font-size:12px;">({es_chg:+.2f}%)</span></div>
+            <div><span class="label-val">{es_val:,.2f}</span> <span style="color:{'#00E676' if es_chg>=0 else '#EF4444'}; font-size:11px;">({es_chg:+.2f}%)</span></div>
         </div>
         <div class="grid-row">
             <span class="label-name">원/달러 환율</span>
-            <div><span class="label-val">₩{usd_val:,.2f}</span> <span style="color:{'#00E676' if usd_chg>=0 else '#EF4444'}; font-size:12px;">({usd_chg:+.2f}%)</span></div>
+            <div><span class="label-val">₩{usd_val:,.2f}</span> <span style="color:{'#00E676' if usd_chg>=0 else '#EF4444'}; font-size:11px;">({usd_chg:+.2f}%)</span></div>
         </div>
         <div class="grid-row">
             <span class="label-name">VIX (변동성 지수)</span>
-            <div><span class="label-val">{vix_val:,.2f}</span> <span style="color:{'#EF4444' if vix_chg>=0 else '#00E676'}; font-size:12px;">({vix_chg:+.2f}%)</span></div>
+            <div><span class="label-val">{vix_val:,.2f}</span> <span style="color:{'#EF4444' if vix_chg>=0 else '#00E676'}; font-size:11px;">({vix_chg:+.2f}%)</span></div>
         </div>
         <div class="grid-row">
             <span class="label-name">미국 10년물 국채금리</span>
-            <div><span class="label-val">{tnx_val:.2f}%</span> <span style="color:{'#00E676' if tnx_chg>=0 else '#EF4444'}; font-size:12px;">({tnx_chg:+.2f}%)</span></div>
+            <div><span class="label-val">{tnx_val:.2f}%</span> <span style="color:{'#00E676' if tnx_chg>=0 else '#EF4444'}; font-size:11px;">({tnx_chg:+.2f}%)</span></div>
         </div>
         <div class="grid-row">
             <span class="label-name">비트코인 (BTC)</span>
-            <div><span class="label-val">${btc_val:,.0f}</span> <span style="color:{'#00E676' if btc_chg>=0 else '#EF4444'}; font-size:12px;">({btc_chg:+.2f}%)</span></div>
+            <div><span class="label-val">${btc_val:,.0f}</span> <span style="color:{'#00E676' if tnx_chg>=0 else '#EF4444'}; font-size:11px;">({btc_chg:+.2f}%)</span></div>
         </div>
     </div>
 </div>
 </body>
 </html>
 """
-components.html(market_component_html, height=230)
+components.html(market_component_html, height=210)
 
 col_search, _ = st.columns([2.0, 3.0])
 with col_search:
