@@ -11,6 +11,7 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 import matplotlib.pyplot as plt
+from streamlit_searchbox import st_searchbox
 
 # 페이지 설정 (반응형 와이드 레이아웃)
 st.set_page_config(
@@ -30,18 +31,6 @@ st.markdown("""
         border-radius: 10px;
         border: 1px solid #1E293B;
         margin-bottom: 15px;
-    }
-
-    div[data-testid="stTextInput"] input {
-        background-color: #0B0E14 !important;
-        color: #FFFFFF !important;
-        border: 1px solid #1E293B !important;
-        border-radius: 6px !important;
-        font-weight: 700 !important;
-    }
-    div[data-testid="stTextInput"] label {
-        color: #94A3B8 !important;
-        font-weight: 600 !important;
     }
 
     div[data-testid="stMetric"] {
@@ -100,6 +89,29 @@ class QuantEngine:
         "guidance": "가이던스", "rally": "랠리", "plummet": "폭락", "surge": "급등",
         "soar": "폭등", "dip": "조정", "buy the dip": "저가 매수", "market cap": "시가총액"
     }
+
+    @staticmethod
+    def search_stock_suggestions(search_term: str):
+        if not search_term or len(search_term.strip()) == 0:
+            return []
+        term = search_term.strip().upper()
+        try:
+            url = f"https://query2.finance.yahoo.com/v1/finance/search?q={urllib.parse.quote(term)}&quotesCount=8&newsCount=0"
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=2) as response:
+                data = json.loads(response.read().decode('utf-8'))
+                quotes = data.get('quotes', [])
+
+                suggestions = []
+                for q in quotes:
+                    symbol = q.get('symbol', '')
+                    name = q.get('shortname', q.get('longname', symbol))
+                    ex = q.get('exchange', '')
+                    display_text = f"{symbol} | {name} ({ex})"
+                    suggestions.append((display_text, symbol))
+                return suggestions
+        except:
+            return []
 
     @staticmethod
     def professional_translate(text: str) -> str:
@@ -219,8 +231,8 @@ class QuantEngine:
             price_change_p = ((curr_price - prev_price) / prev_price) * 100
             
             atr = float((high.tail(14) - low.tail(14)).mean())
-            stop_loss = curr_price - (atr * 2)
-            take_profit = curr_price + (atr * 3)
+            stop_loss = curr_price - (atr * 1.5)  # 🛡️ 보수적 투자자를 위해 손절 폭을 조금 더 타이트하게 설정 (1.5 ATR)
+            take_profit = curr_price + (atr * 2.5) # 🛡️ 목표가도 현실적으로 조정 (2.5 ATR)
 
             ema20 = close.ewm(span=20, adjust=False).mean()
             ema50 = close.ewm(span=50, adjust=False).mean() if len(close) >= 50 else ema20
@@ -230,34 +242,40 @@ class QuantEngine:
             short_ratio = info.get('shortPercentOfFloat', 0.05)
             bt_ret, bt_win, bt_mdd = QuantEngine.run_backtest(ticker_symbol)
 
-            # 🛡️ [보수적 우량 퀀트 점수 산정 로직]
-            score = 50
+            # 🛡️ [매우 보수적 우량 퀀트 점수 산정 로직]
+            score = 40  # 기본 점수를 낮게 설정하여 진입 문턱을 높임
             
-            # 1. 추세 정배열 가점 (장기 이평선 기준)
-            if len(close) >= 200 and curr_price > ema20.iloc[-1] > ema50.iloc[-1] > ema200.iloc[-1]:
-                score += 20
+            # 1. 완벽한 정배열 및 장기 추세 확인 (가점 대폭 축소 및 역배열 시 강력 감점)
+            if len(close) >= 200 and curr_price > ema20.iloc[-1] and ema20.iloc[-1] > ema50.iloc[-1] and ema50.iloc[-1] > ema200.iloc[-1]:
+                score += 25
             elif curr_price > ema20.iloc[-1]:
-                score += 10
+                score += 5
             else:
-                score -= 15
+                score -= 20 # 역배열이거나 이평선 아래면 큰 감점
 
-            # 2. RSI 안정 구간 가점 (과매수 75 이상이거나 과매도면 감점)
-            if 45 <= rsi <= 68:
-                score += 15
-            elif rsi > 75 or rsi < 30:
-                score -= 15
+            # 2. RSI 안정 구간 세분화 (과매수 구간 진입 시 엄격한 감점)
+            if 45 <= rsi <= 60:  # 너무 높지도 낮지도 않은 안전한 상승 초입/조정 구간
+                score += 20
+            elif 60 < rsi <= 70: # 약간의 상승세
+                score += 10
+            elif rsi > 70 or rsi < 35: # 과매수 또는 과매도 위험 구간
+                score -= 25
 
-            # 3. 거래대금 및 유동성 필터 (잡주/소형 작전주 필터링)
+            # 3. 유동성 및 거래대금 필터 강화 (일평균 거래대금 1,000만 달러 미만 종목 강력 감점)
             avg_volume_20 = volume.tail(20).mean()
-            if avg_volume_20 * curr_price < 5000000:
-                score -= 20
+            if avg_volume_20 * curr_price < 10000000:
+                score -= 25
+            else:
+                score += 10
 
-            # 4. 단기 과열(이격도) 감점
+            # 4. 단기 과열(이격도) 철저 차단 (20일선 기준 이격도 10% 이상이면 과열로 판단 감점)
             disparity = ((curr_price - ema20.iloc[-1]) / ema20.iloc[-1]) * 100
-            if disparity > 20:
-                score -= 15
+            if disparity > 10:
+                score -= 20
+            elif disparity < -5: # 너무 급락한 칼날인 경우도 감점
+                score -= 10
 
-            score = max(10, min(100, score))
+            score = max(0, min(100, score))
 
             return {
                 "ticker": ticker_symbol, "company_name": info.get('longName', ticker_symbol),
@@ -283,17 +301,22 @@ if "tf" in query_params:
 
 st.markdown(f"""
     <div class="dashboard-header">
-        <span style="color: #00E676; font-weight: 900; font-size: 16px;">📊 Stock Dashboard</span>
+        <span style="color: #00E676; font-weight: 900; font-size: 16px;">📊 Stock Dashboard (Conservative Mode)</span>
         <span style="color: #94A3B8; font-size: 12px; margin-left: 10px;">Overview | 나스닥 선물: {QuantEngine.get_nasdaq_futures()}</span>
     </div>
 """, unsafe_allow_html=True)
 
-col_search, col_dummy = st.columns([1.5, 3.5])
+col_search, col_dummy = st.columns([2.0, 3.0])
 with col_search:
-    user_input = st.text_input("🔍 종목 검색", value=st.session_state['selected_ticker'], placeholder="티커 입력 후 Enter")
-    if user_input and user_input.upper() != st.session_state['selected_ticker']:
-        st.session_state['selected_ticker'] = user_input.upper()
-        st.query_params["q"] = user_input.upper()
+    selected_ticker_result = st_searchbox(
+        QuantEngine.search_stock_suggestions,
+        placeholder="티커 검색 (예: asts)...",
+        key="stock_autocomplete_search",
+    )
+
+    if selected_ticker_result and selected_ticker_result != st.session_state['selected_ticker']:
+        st.session_state['selected_ticker'] = selected_ticker_result.upper()
+        st.query_params["q"] = selected_ticker_result.upper()
         st.rerun()
 
 res = QuantEngine.fetch_market_data(st.session_state['selected_ticker'], st.session_state['timeframe'])
@@ -304,15 +327,15 @@ if res:
     score = res['score']
     st.markdown(
         f"<div style='background: linear-gradient(135deg, #F59E0B, #D97706); color: #000000; font-weight: 900; font-size: 15px; text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 12px;'>"
-        f"종합 매수 적합도 : {score} / 100 점"
+        f"보수적 퀀트 매수 적합도 : {score} / 100 점"
         f"</div>",
         unsafe_allow_html=True
     )
     
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("현재가", f"${res['curr_price']:.2f}", f"{res['price_change_p']:+.2f}%")
-    col2.metric("목표가 (TP)", f"${res['take_profit']}")
-    col3.metric("손절가 (SL)", f"${res['stop_loss']}")
+    col2.metric("보수적 목표가 (TP)", f"${res['take_profit']}")
+    col3.metric("타이트 손절가 (SL)", f"${res['stop_loss']}")
     col4.metric("공매도 비율", res['short_ratio'])
 
     col5, col6, col7, col8 = st.columns(4)
@@ -322,7 +345,8 @@ if res:
     col8.metric("최대 낙폭", f"{res['bt_mdd']:.1f}%")
 
     st.markdown("<br>", unsafe_allow_html=True)
-    status_text = "🚀 BUY (적극 매수 / 수급 유입 구간)" if score >= 70 else "⚠️ WAIT (관망 및 조정 대기 구간)"
+    # 🛡️ 보수적 기준: 75점 이상이어야 적극 매수, 그 외에는 철저한 관망 권장
+    status_text = "🚀 STRONG BUY (엄격한 기준 충족 / 안전 진입 구간)" if score >= 75 else "⚠️ WAIT & DEFENSE (위험 관리 및 관망 권장 구간)"
     st.markdown(f"<p style='color: #00E676; font-weight: bold; font-size: 14px; margin-bottom: 15px;'>{status_text}</p>", unsafe_allow_html=True)
 
     c_title, c_tf = st.columns([3.5, 1.5])
