@@ -46,7 +46,6 @@ st.markdown("""
         font-size: 13px !important;
     }
 
-    /* 드롭다운 추천 검색어 버튼 스타일 */
     div.stButton > button {
         width: 100% !important;
         background-color: #121824 !important;
@@ -248,27 +247,22 @@ if res:
     status_text = "🚀 STRONG BUY (엄격한 기준 충족 / 안전 진입 구간)" if score >= 75 else "⚠️ WAIT & DEFENSE (위험 관리 및 관망 권장 구간)"
     st.markdown(f"<p style='color: #00E676; font-weight: bold; font-size: 14px; margin-bottom: 15px;'>{status_text}</p>", unsafe_allow_html=True)
 
-    c_title, c_tf = st.columns([3.5, 1.5])
+    c_title, c_tf_label, b1, b2, b3 = st.columns([2.5, 1.0, 0.5, 0.5, 0.5])
     with c_title:
         st.markdown("<h4 style='color: #94A3B8; font-size: 14px; margin-top: 12px;'>📈 Technical Chart & MA</h4>", unsafe_allow_html=True)
-    with c_tf:
-        tf_1d_bg = "#1E293B" if current_tf == "1D" else "#121824"
-        tf_1d_color = "#00E676" if current_tf == "1D" else "#94A3B8"
-        tf_1h_bg = "#1E293B" if current_tf == "1H" else "#121824"
-        tf_1h_color = "#00E676" if current_tf == "1H" else "#94A3B8"
-        tf_15m_bg = "#1E293B" if current_tf == "15M" else "#121824"
-        tf_15m_color = "#00E676" if current_tf == "15M" else "#94A3B8"
-
-        # f-string 충돌 방지를 위해 변수를 미리 선언하여 삽입
-        ticker_val = res['ticker']
-        tf_html = f"""
-        <div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 6px;">
-            <button onclick="window.parent.location.search = '?q={ticker_val}&tf=1D'" style="background-color: {tf_1d_bg}; color: {tf_1d_color}; border: 1px solid #1E293B; border-radius: 6px; padding: 6px 10px; font-weight: 700; font-size: 12px; cursor: pointer;">1D</button>
-            <button onclick="window.parent.location.search = '?q={ticker_val}&tf=1H'" style="background-color: {tf_1h_bg}; color: {tf_1h_color}; border: 1px solid #1E293B; border-radius: 6px; padding: 6px 10px; font-weight: 700; font-size: 12px; cursor: pointer;">1H</button>
-            <button onclick="window.parent.location.search = '?q={ticker_val}&tf=15M'" style="background-color: {tf_15m_bg}; color: {tf_15m_color}; border: 1px solid #1E293B; border-radius: 6px; padding: 6px 10px; font-weight: 700; font-size: 12px; cursor: pointer;">15M</button>
-        </div>
-        """
-        components.html(tf_html, height=45)
+    
+    with b1:
+        if st.button("1D", key="tf_1d"):
+            st.query_params["tf"] = "1D"
+            st.rerun()
+    with b2:
+        if st.button("1H", key="tf_1h"):
+            st.query_params["tf"] = "1H"
+            st.rerun()
+    with b3:
+        if st.button("15M", key="tf_15m"):
+            st.query_params["tf"] = "15M"
+            st.rerun()
     
     fig, ax = plt.subplots(figsize=(14, 4.5), facecolor='#0B0E14')
     ax.set_facecolor('#121824')
