@@ -2,8 +2,8 @@ import streamlit as st
 import streamlit.components.v1 as components
 import urllib.request
 import urllib.parse
-json_mod = json
 import json
+import re
 import pandas as pd
 import numpy as np
 import yfinance as yf
@@ -158,7 +158,7 @@ if "tf" in query_params:
 
 st.markdown(f"""
     <div class="dashboard-header">
-        <span style="color: #00E676; font-weight: 900; font-size: 16px;">📊 Stock Dashboard (Fast Search)</span>
+        <span style="color: #00E676; font-weight: 900; font-size: 16px;">📊 Stock Dashboard (Lightning Speed)</span>
         <span style="color: #94A3B8; font-size: 12px; margin-left: 10px;">Overview | 나스닥 선물: {fast_nasdaq_futures()}</span>
     </div>
 """, unsafe_allow_html=True)
@@ -166,7 +166,6 @@ st.markdown(f"""
 current_tf = st.session_state['timeframe']
 current_sel = st.session_state['selected_ticker']
 
-# Streamlit 기본 입력창을 활용한 깔끔하고 빠른 검색 처리
 col_search, col_dummy = st.columns([2.0, 3.0])
 with col_search:
     search_input = st.text_input("티커 검색", value=current_sel, placeholder="예: AAPL, TSLA, ASTS...")
@@ -180,7 +179,6 @@ with col_search:
                 name = item["name"]
                 ex = item["exchange"]
                 
-                # 검색어 강조
                 pattern = re.compile(re.escape(search_input.strip()), re.IGNORECASE)
                 highlighted_sym = pattern.sub(lambda m: f"<span style='color: #00E676; font-weight: 900;'>{m.group(0)}</span>", sym)
                 
@@ -217,7 +215,7 @@ if res:
     )
     
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("현재가", f"${res['curr_price']:.2f}", f"${res['price_change_p']:+.2f}%" if 'price_change_p' in res else "")
+    col1.metric("현재가", f"${res['curr_price']:.2f}", f"{res['price_change_p']:+.2f}%")
     col2.metric("보수적 목표가 (TP)", f"${res['take_profit']}")
     col3.metric("타이트 손절가 (SL)", f"${res['stop_loss']}")
     col4.metric("공매도 비율", res['short_ratio'])
