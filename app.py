@@ -32,18 +32,20 @@ st.set_page_config(
     layout="wide"
 )
 
-# 🎨 다크 테마 및 호버 툴팁 스타일 CSS 커스텀
+# 🎨 다크 테마 및 롤링 슬롯 + 호버 툴팁 CSS
 st.markdown("""
     <style>
     .stApp { background-color: #0B0E14 !important; color: #E0E0E0 !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     
-    /* 마켓 오버뷰 호버 컨테이너 */
+    /* 마켓 오버뷰 호버 및 슬롯 컨테이너 */
     .market-overview-container {
         position: relative;
-        display: inline-block;
+        display: flex;
+        align-items: center;
         width: 100%;
+        height: 48px;
         background-color: #121824;
-        padding: 14px 18px;
+        padding: 0 18px;
         border-radius: 10px;
         border: 1px solid #1E293B;
         margin-bottom: 15px;
@@ -54,11 +56,62 @@ st.markdown("""
         border-color: #00E676;
     }
 
-    /* 호버 시 나타나는 툴팁 박스 */
+    .market-title-badge {
+        color: #00E676; 
+        font-weight: 900; 
+        font-size: 15px; 
+        white-space: nowrap;
+        margin-right: 15px;
+        display: flex;
+        align-items: center;
+    }
+
+    /* 슬롯 롤링 윈도우 */
+    .ticker-slider-window {
+        height: 24px;
+        overflow: hidden;
+        position: relative;
+        flex-grow: 1;
+    }
+
+    .ticker-slider-list {
+        display: flex;
+        flex-direction: column;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        animation: slotRoll 18s cubic-bezier(0.645, 0.045, 0.355, 1) infinite;
+    }
+    
+    .market-overview-container:hover .ticker-slider-list {
+        animation-play-state: paused;
+    }
+
+    .ticker-item {
+        height: 24px;
+        line-height: 24px;
+        font-size: 13px;
+        color: #94A3B8;
+        white-space: nowrap;
+    }
+
+    /* 6개 지표 x 3초 = 18초 키프레임 애니메이션 */
+    @keyframes slotRoll {
+        0%, 13.88%   { transform: translateY(0px); }
+        16.66%, 30.55% { transform: translateY(-24px); }
+        33.33%, 47.22% { transform: translateY(-48px); }
+        50.00%, 63.88% { transform: translateY(-72px); }
+        66.66%, 80.55% { transform: translateY(-96px); }
+        83.33%, 97.22% { transform: translateY(-120px); }
+        100%          { transform: translateY(-144px); }
+    }
+
+    /* 호버 툴팁 박스 (기본 숨김 -> 호버 시에만 표시) */
     .market-overview-tooltip {
-        visibility: hidden;
+        display: none;
         opacity: 0;
-        width: 320px;
+        pointer-events: none;
+        width: 340px;
         background-color: #1A2234;
         color: #F8FAFC;
         text-align: left;
@@ -71,11 +124,13 @@ st.markdown("""
         margin-top: 8px;
         border: 1px solid #334155;
         box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-        transition: opacity 0.25s ease, visibility 0.25s ease;
+        transition: opacity 0.2s ease-in-out;
     }
+
     .market-overview-container:hover .market-overview-tooltip {
-        visibility: visible;
-        opacity: 1;
+        display: block !important;
+        opacity: 1 !important;
+        pointer-events: auto;
     }
 
     .tooltip-row {
@@ -207,7 +262,7 @@ class QuantEngine:
 
     @staticmethod
     def get_market_overview_data():
-        """핵심 글로벌 지표 수집 (나스닥 선물, S&P500 선물, 환율, VIX, 국채금리, 비트코인)"""
+        """핵심 글로벌 지표 수집"""
         tickers = {
             "NQ": "NQ=F",        # 나스닥 100 선물
             "ES": "ES=F",        # S&P 500 선물
@@ -219,9 +274,7 @@ class QuantEngine:
         
         results = {}
         try:
-            # yfinance로 한 번에 조회하여 속도 최적화
             data = yf.Tickers(" ".join(tickers.values()))
-            
             for key, sym in tickers.items():
                 try:
                     hist = data.tickers[sym].history(period="5d")
@@ -235,7 +288,6 @@ class QuantEngine:
         except:
             pass
 
-        # 기본 예비 데이터 (오류 발생 시 방어용)
         default_res = {
             "NQ": (19850.25, 0.15),
             "ES": (5540.50, 0.08),
@@ -253,7 +305,6 @@ class QuantEngine:
 
     @staticmethod
     def get_google_news(ticker_symbol: str):
-        """정확도 높은 구글 영문 뉴스 검색"""
         news_list = []
         try:
             query = urllib.parse.quote(f'"{ticker_symbol}" stock OR shares OR earnings OR SEC')
@@ -288,7 +339,6 @@ class QuantEngine:
 
     @staticmethod
     def get_stocktwits_posts(ticker_symbol: str):
-        """StockTwits 공식 무료 API를 활용한 실시간 개미 반응 수집"""
         posts = []
         try:
             url = f"https://api.stocktwits.com/api/2/streams/symbol/{ticker_symbol}.json"
@@ -333,7 +383,6 @@ class QuantEngine:
 
     @staticmethod
     def get_social_gossip(ticker_symbol: str):
-        """StockTwits + 레딧/X 연관 소셜 반응 수집"""
         social_list = QuantEngine.get_stocktwits_posts(ticker_symbol)
         
         if len(social_list) < 5:
@@ -472,7 +521,7 @@ with col_popover:
         if st.button("관심종목 (Watchlist)", use_container_width=True):
             pass
 
-# ── [화면 중앙 메인 로고 영역 (taurusfinal.png 적용)] ──
+# ── [화면 중앙 메인 로고 영역] ──
 col_b1, col_b2, col_b3 = st.columns([1, 2, 1])
 with col_b2:
     main_logo = get_image_base64("taurusfinal.png")
@@ -496,7 +545,7 @@ with col_b2:
             </div>
         """, unsafe_allow_html=True)
 
-# ── [Market Overview 영역: 호버 시 주요 글로벌 지표 툴팁 표시] ──
+# ── [Market Overview 영역: 3초 슬롯 롤링 + 호버 시에만 툴팁 팝업] ──
 market_data = QuantEngine.get_market_overview_data()
 
 nq_val, nq_chg = market_data["NQ"]
@@ -508,16 +557,42 @@ btc_val, btc_chg = market_data["BTC"]
 
 st.markdown(f"""
     <div class="market-overview-container">
-        <div>
-            <span style="color: #00E676; font-weight: 900; font-size: 16px;">📊 Market Overview</span>
-            <span style="color: #94A3B8; font-size: 12px; margin-left: 10px;">
-                나스닥100 선물: <b style="color:#F8FAFC;">{nq_val:,.2f}</b> 
-                <span style="color:{'#00E676' if nq_chg>=0 else '#EF4444'};">({nq_chg:+.2f}%)</span>
-                <span style="color:#64748B; font-size: 11px; margin-left: 6px;">(🔍 마우스를 올려 상세지표 확인)</span>
-            </span>
+        <div class="market-title-badge">📊 Market Overview</div>
+        
+        <div class="ticker-slider-window">
+            <ul class="ticker-slider-list">
+                <li class="ticker-item">
+                    나스닥 100 선물: <b style="color:#F8FAFC;">{nq_val:,.2f}</b> 
+                    <span style="color:{'#00E676' if nq_chg>=0 else '#EF4444'};">({nq_chg:+.2f}%)</span>
+                    <span style="color:#64748B; font-size: 11px; margin-left: 8px;">(🔍 마우스를 올려 상세지표 확인)</span>
+                </li>
+                <li class="ticker-item">
+                    S&P 500 선물: <b style="color:#F8FAFC;">{es_val:,.2f}</b> 
+                    <span style="color:{'#00E676' if es_chg>=0 else '#EF4444'};">({es_chg:+.2f}%)</span>
+                </li>
+                <li class="ticker-item">
+                    원/달러 환율: <b style="color:#F8FAFC;">₩{usd_val:,.2f}</b> 
+                    <span style="color:{'#00E676' if usd_chg>=0 else '#EF4444'};">({usd_chg:+.2f}%)</span>
+                </li>
+                <li class="ticker-item">
+                    VIX (공포 지수): <b style="color:#F8FAFC;">{vix_val:,.2f}</b> 
+                    <span style="color:{'#EF4444' if vix_chg>=0 else '#00E676'};">({vix_chg:+.2f}%)</span>
+                </li>
+                <li class="ticker-item">
+                    미국 10년물 국채금리: <b style="color:#F8FAFC;">{tnx_val:.2f}%</b> 
+                    <span style="color:{'#00E676' if tnx_chg>=0 else '#EF4444'};">({tnx_chg:+.2f}%)</span>
+                </li>
+                <li class="ticker-item">
+                    비트코인 (BTC): <b style="color:#F8FAFC;">${btc_val:,.0f}</b> 
+                    <span style="color:{'#00E676' if btc_chg>=0 else '#EF4444'};">({btc_chg:+.2f}%)</span>
+                </li>
+                <li class="ticker-item">
+                    나스닥 100 선물: <b style="color:#F8FAFC;">{nq_val:,.2f}</b> 
+                    <span style="color:{'#00E676' if nq_chg>=0 else '#EF4444'};">({nq_chg:+.2f}%)</span>
+                </li>
+            </ul>
         </div>
         
-        <!-- 마우스 올려 놓을 때 팝업되는 툴팁 영역 -->
         <div class="market-overview-tooltip">
             <div style="font-weight: 800; font-size: 13px; color: #00E676; margin-bottom: 8px; border-bottom: 1px solid #334155; padding-bottom: 4px;">
                 🌐 주요 글로벌 시장 지표
