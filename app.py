@@ -377,19 +377,12 @@ if res:
         st.markdown(f"<h3 style='color: #F8FAFC; margin-bottom: 5px;'>[{res['ticker']}] {res['company_name']}</h3>", unsafe_allow_html=True)
     
     with col_btn:
-        # 상단 배너 버튼 내부는 bull logo.png 유지 혹은 필요시 taurusfinal.png로 변경 가능
-        img_src = get_image_base64("bull logo.png")
-        if img_src:
-            img_html = f'<img src="{img_src}" style="width: 100%; height: 100%; object-fit: cover;">'
-        else:
-            img_html = '<span style="color: #FF2A2A; font-weight: bold; font-size: 10px;">TL</span>'
-
         st.markdown(f"""
             <div style="display: flex; justify-content: flex-end; align-items: center; height: 100%; padding-top: 5px;">
                 <a href="https://earnings.kr/" target="_blank" style="text-decoration: none;">
                     <div style="
                         background-color: #121824; 
-                        padding: 6px 14px 6px 8px; 
+                        padding: 6px 14px 6px 12px; 
                         border-radius: 20px; 
                         border: 1px solid #1E293B; 
                         display: inline-flex; 
@@ -397,23 +390,11 @@ if res:
                         gap: 8px;
                         cursor: pointer;
                     ">
-                        <!-- TAURUS LAB 원형 로고 아이콘 -->
-                        <div style="
-                            width: 24px; 
-                            height: 24px; 
-                            border-radius: 50%; 
-                            overflow: hidden; 
-                            display: flex; 
-                            align-items: center; 
-                            justify-content: center;
-                            background-color: #000000;
-                            border: 1px solid #FF2A2A;
-                        ">
-                            {img_html}
-                        </div>
+                        <!-- 확성기 이모지 아이콘 -->
+                        <span style="font-size: 15px; line-height: 1;">📢</span>
                         <!-- 텍스트 영역 -->
                         <span style="color: #F8FAFC; font-size: 13px; font-weight: 600; letter-spacing: -0.3px;">
-                            어닝시즌 <span style="color: #475569; font-weight: 300;">|</span> 쉽고 빠르게
+                            실적발표 보러가기
                         </span>
                     </div>
                 </a>
