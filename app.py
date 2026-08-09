@@ -80,7 +80,7 @@ st.markdown("""<style>
     margin: 0;
     padding: 0;
     list-style: none;
-    animation: slotRoll 18s cubic-bezier(0.645, 0.045, 0.355, 1) infinite;
+    animation: slotRoll 15s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 .market-overview-container:hover .ticker-slider-list {
@@ -95,15 +95,15 @@ st.markdown("""<style>
     white-space: nowrap;
 }
 
-/* 6개 지표 x 3초 = 18초 키프레임 애니메이션 */
+/* 6개 항목 + 연결용 1개 (총 15초, 균등 전환) */
 @keyframes slotRoll {
-    0%, 13.88%   { transform: translateY(0px); }
-    16.66%, 30.55% { transform: translateY(-24px); }
-    33.33%, 47.22% { transform: translateY(-48px); }
-    50.00%, 63.88% { transform: translateY(-72px); }
-    66.66%, 80.55% { transform: translateY(-96px); }
-    83.33%, 97.22% { transform: translateY(-120px); }
-    100%          { transform: translateY(-144px); }
+    0%, 13.33%     { transform: translateY(0px); }
+    16.66%, 30%    { transform: translateY(-24px); }
+    33.33%, 46.66% { transform: translateY(-48px); }
+    50%, 63.33%    { transform: translateY(-72px); }
+    66.66%, 80%    { transform: translateY(-96px); }
+    83.33%, 96.66% { transform: translateY(-120px); }
+    100%           { transform: translateY(-144px); }
 }
 
 /* 호버 툴팁 박스 (기본 숨김 -> 호버 시에만 표시) */
