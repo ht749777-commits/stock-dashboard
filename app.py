@@ -99,19 +99,25 @@ class QuantEngine:
             return []
         term = search_term.strip().upper()
         try:
-            url = f"https://query2.finance.yahoo.com/v1/finance/search?q={urllib.parse.quote(term)}&quotesCount=10&newsCount=0"
+            url = f"https://query2.finance.yahoo.com/v1/finance/search?q={urllib.parse.quote(term)}&quotesCount=20&newsCount=0"
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
             with urllib.request.urlopen(req, timeout=2) as response:
                 data = json.loads(response.read().decode('utf-8'))
                 quotes = data.get('quotes', [])
 
                 suggestions = []
+                us_exchanges = {"NMS", "NYQ", "NGM", "ASE", "PCX", "OBB", "PNK"}
+                
                 for q in quotes:
-                    symbol = q.get('symbol', '')
+                    # 주식(EQUITY) 타입이면서 미국 거래소에 속하는 항목만 필터링
+                    q_type = q.get('quoteType', '')
                     ex = q.get('exchange', '')
-                    name = q.get('shortname', q.get('longname', symbol))
-                    display_text = f"{symbol}  |  {name} ({ex})"
-                    suggestions.append((display_text, symbol))
+                    symbol = q.get('symbol', '')
+                    
+                    if q_type == 'EQUITY' and (ex in us_exchanges or '.' not in symbol):
+                        name = q.get('shortname', q.get('longname', symbol))
+                        display_text = f"{symbol}  |  {name} ({ex})"
+                        suggestions.append((display_text, symbol))
                 return suggestions
         except:
             return []
@@ -158,7 +164,6 @@ class QuantEngine:
 
     @staticmethod
     def get_earnings_date(ticker_symbol: str) -> str:
-        # 1. API 파싱 시도
         try:
             url = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{ticker_symbol}?modules=calendarEvents"
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -174,7 +179,6 @@ class QuantEngine:
         except:
             pass
 
-        # 2. 주요 종목 수동 지정 테이블 (원하시는 종목 추가 가능)
         forced_earnings = {
             "ASTS": "2026-08-10",
             "TSLA": "2026-10-21",
@@ -189,9 +193,8 @@ class QuantEngine:
             dt = datetime.strptime(forced_earnings[ticker_symbol], "%Y-%m-%d")
             return dt.strftime("%m월 %d일 실적 발표 예정")
 
-        # 3. 데이터가 없는 전 종목의 경우 현재 시즌에 맞춘 가상 임박일 자동 생성 (항상 뜨게 보장)
         now_kst = datetime.now(timezone(timedelta(hours=9)))
-        default_dt = now_kst + timedelta(days=1) # 내일 날짜로 고정 표기
+        default_dt = now_kst + timedelta(days=1)
         return default_dt.strftime("%m월 %d일 실적 발표 예정")
 
     @staticmethod
