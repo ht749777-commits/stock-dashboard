@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit.components.v1 as components
 import urllib.request
 import urllib.parse
 import json
@@ -28,6 +27,23 @@ st.markdown("""
         border-radius: 10px;
         border: 1px solid #1E293B;
         margin-bottom: 15px;
+    }
+
+    div[data-testid="stTextInput"] input {
+        background-color: #121824 !important;
+        color: #F8FAFC !important;
+        border: 1px solid #1E293B !important;
+        border-radius: 10px !important;
+        padding: 12px 16px !important;
+    }
+    div[data-testid="stTextInput"] input:focus {
+        border: 1px solid #00E676 !important;
+        box-shadow: 0 0 0 1px #00E676 !important;
+    }
+    div[data-testid="stTextInput"] label {
+        color: #94A3B8 !important;
+        font-weight: 600 !important;
+        font-size: 13px !important;
     }
 
     div[data-testid="stMetric"] {
@@ -72,6 +88,27 @@ def fast_nasdaq_futures():
             return f"{curr:,.2f} ({rate:+.2f}%)"
     except:
         return "29,834.75 (+0.02%)"
+
+@st.cache_data(ttl=60)
+def get_search_suggestions(search_term: str):
+    if not search_term or len(search_term.strip()) == 0:
+        return []
+    term = search_term.strip().upper()
+    try:
+        url = f"https://query2.finance.yahoo.com/v1/finance/search?q={urllib.parse.quote(term)}&quotesCount=5&newsCount=0"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=0.8) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            quotes = data.get('quotes', [])
+            suggestions = []
+            for q in quotes:
+                symbol = q.get('symbol', '')
+                name = q.get('shortname', q.get('longname', symbol))
+                ex = q.get('exchange', '')
+                suggestions.append({"symbol": symbol, "name": name, "exchange": ex})
+            return suggestions
+    except:
+        return []
 
 @st.cache_data(ttl=300)
 def fast_market_data(ticker_symbol: str, timeframe: str = "1D"):
@@ -143,7 +180,7 @@ if "tf" in query_params:
 
 st.markdown(f"""
     <div class="dashboard-header">
-        <span style="color: #00E676; font-weight: 900; font-size: 16px;">📊 Stock Dashboard (Instant Search)</span>
+        <span style="color: #00E676; font-weight: 900; font-size: 16px;">📊 Stock Dashboard</span>
         <span style="color: #94A3B8; font-size: 12px; margin-left: 10px;">Overview | 나스닥 선물: {fast_nasdaq_futures()}</span>
     </div>
 """, unsafe_allow_html=True)
@@ -151,130 +188,20 @@ st.markdown(f"""
 current_tf = st.session_state['timeframe']
 current_sel = st.session_state['selected_ticker']
 
-# 🚀 자바스크립트 기반 완전 실시간 검색 컴포넌트 (엔터/클릭 불필요, 타이핑 즉시 반영)
-search_component_html = f"""
-<!DOCTYPE html>
-<html>
-<head>
-<style>
-    body {{ background-color: #0B0E14; color: #E0E0E0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; }}
-    .search-container {{ position: relative; width: 100%; }}
-    .search-label {{ color: #94A3B8; font-weight: 600; font-size: 13px; display: block; margin-bottom: 6px; }}
-    .search-input {{
-        width: 100%;
-        background-color: #121824;
-        color: #F8FAFC;
-        border: 1px solid #1E293B;
-        border-radius: 10px;
-        padding: 12px 16px;
-        font-size: 14px;
-        box-sizing: border-box;
-        outline: none;
-    }}
-    .search-input:focus {{ border: 1px solid #00E676; box-shadow: 0 0 0 1px #00E676; }}
-    .dropdown-box {{
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        background-color: #121824;
-        border: 1px solid #1E293B;
-        border-radius: 0 0 10px 10px;
-        margin-top: 4px;
-        box-shadow: 0 12px 24px rgba(0,0,0,0.5);
-        overflow: hidden;
-        z-index: 9999;
-        display: none;
-    }}
-    .dropdown-item {{
-        padding: 10px 14px;
-        cursor: pointer;
-        border-bottom: 1px solid #1E293B;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }}
-    .dropdown-item:hover {{ background-color: #1E293B; }}
-    .highlight {{ color: #00E676; font-weight: 900; }}
-</style>
-</head>
-<body>
-<div class="search-container">
-    <label class="search-label">티커 검색</label>
-    <input type="text" id="searchInput" class="search-input" value="{current_sel}" placeholder="예: AAPL, TSLA, ASTS..." autocomplete="off">
-    <div id="dropdownBox" class="dropdown-box"></div>
-</div>
-
-<script>
-const input = document.getElementById('searchInput');
-const dropdown = document.getElementById('dropdownBox');
-let timeout = null;
-const currentTf = "{current_tf}";
-
-input.addEventListener('input', function() {{
-    const query = input.value.trim();
-    if (query.length === 0) {{
-        dropdown.style.display = 'none';
-        return;
-    }}
-    
-    clearTimeout(timeout);
-    timeout = setTimeout(async () => {{
-        try {{
-            // 퍼블릭 야후 파이낸스 검색 프록시 이용
-            const res = await fetch('https://query2.finance.yahoo.com/v1/finance/search?q=' + encodeURIComponent(query) + '&quotesCount=5&newsCount=0');
-            const data = await res.json();
-            const quotes = data.quotes || [];
-            
-            if (quotes.length > 0) {{
-                let html = '';
-                quotes.forEach(q => {{
-                    const sym = q.symbol || '';
-                    const name = q.shortname || q.longname || sym;
-                    const ex = q.exchange || '';
-                    
-                    const regex = new RegExp('(' + query + ')', 'gi');
-                    const highlightedSym = sym.replace(regex, '<span class="highlight">$1</span>');
-                    
-                    html += `
-                        <div class="dropdown-item" onclick="selectStock('` + sym + `')">
-                            <div>
-                                <span style="font-size: 14px; font-weight: 700; color: #F8FAFC;">` + highlightedSym + `</span>
-                                <span style="font-size: 13px; color: #94A3B8; margin-left: 8px;">` + name + `</span>
-                            </div>
-                            <span style="font-size: 11px; color: #64748B; background: #0B0E14; padding: 2px 6px; border-radius: 4px;">` + ex + `</span>
-                        </div>
-                    `;
-                }});
-                dropdown.innerHTML = html;
-                dropdown.style.display = 'block';
-            }} else {{
-                dropdown.style.display = 'none';
-            }}
-        }} catch(e) {{
-            // CORS 이슈 발생 시 대안으로 대문자 강제 매칭 리스트 표시
-            dropdown.style.display = 'none';
-        }}
-    }}, 150);
-}});
-
-function selectStock(sym) {{
-    window.parent.location.search = '?q=' + sym + '&tf=' + currentTf;
-}}
-
-document.addEventListener('click', function(e) {{
-    if (!e.target.closest('.search-container')) {{
-        dropdown.style.display = 'none';
-    }}
-}});
-</script>
-</body>
-</html>
-"""
-
 col_search, col_dummy = st.columns([2.0, 3.0])
 with col_search:
-    components.html(search_component_html, height=95)
+    search_input = st.text_input("티커 검색", value=current_sel, placeholder="예: AAPL, TSLA, ASTS...")
+    
+    if search_input:
+        suggestions = get_search_suggestions(search_input)
+        if suggestions:
+            for item in suggestions:
+                sym = item["symbol"]
+                name = item["name"]
+                if st.button(f"{sym} ({name})", key=f"btn_{sym}"):
+                    st.session_state['selected_ticker'] = sym
+                    st.query_params["q"] = sym
+                    st.rerun()
 
 res = fast_market_data(st.session_state['selected_ticker'], st.session_state['timeframe'])
 
