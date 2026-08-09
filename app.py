@@ -141,10 +141,10 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# 🔍 완전한 실시간 반응형 자바스크립트 검색 컴포넌트 탑재
 current_tf = st.session_state['timeframe']
 current_sel = st.session_state['selected_ticker']
 
+# 에러가 나지 않도록 안전하게 수정된 자바스크립트 검색 컴포넌트
 search_component_html = f"""
 <!DOCTYPE html>
 <html>
@@ -202,6 +202,7 @@ search_component_html = f"""
 const input = document.getElementById('searchInput');
 const dropdown = document.getElementById('dropdownBox');
 let timeout = null;
+const currentTf = "{current_tf}";
 
 input.addEventListener('input', function() {{
     const query = input.value.trim();
@@ -213,8 +214,9 @@ input.addEventListener('input', function() {{
     clearTimeout(timeout);
     timeout = setTimeout(async () => {{
         try {{
-            const res = await fetch(`https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=5&newsCount=0`);
-            const data = await res.json();
+            const encodedQuery = encodeURIComponent(query);
+            const response = await fetch('https://query2.finance.yahoo.com/v1/finance/search?q=' + encodedQuery + '&quotesCount=5&newsCount=0');
+            const data = await response.json();
             const quotes = data.quotes || [];
             
             if (quotes.length > 0) {{
@@ -224,17 +226,16 @@ input.addEventListener('input', function() {{
                     const name = q.shortname || q.longname || sym;
                     const ex = q.exchange || '';
                     
-                    // 입력한 글자 강조
-                    const regex = new RegExp(`(${query})`, 'gi');
+                    const regex = new RegExp('(' + query + ')', 'gi');
                     const highlightedSym = sym.replace(regex, '<span class="highlight">$1</span>');
                     
                     html += `
-                        <div class="dropdown-item" onclick="selectStock('${{sym}}')">
+                        <div class="dropdown-item" onclick="selectStock('` + sym + `')">
                             <div>
-                                <span style="font-size: 14px; font-weight: 700; color: #F8FAFC;">${{highlightedSym}}</span>
-                                <span style="font-size: 13px; color: #94A3B8; margin-left: 8px;">${{name}}</span>
+                                <span style="font-size: 14px; font-weight: 700; color: #F8FAFC;">` + highlightedSym + `</span>
+                                <span style="font-size: 13px; color: #94A3B8; margin-left: 8px;">` + name + `</span>
                             </div>
-                            <span style="font-size: 11px; color: #64748B; background: #0B0E14; padding: 2px 6px; border-radius: 4px;">${{ex}}</span>
+                            <span style="font-size: 11px; color: #64748B; background: #0B0E14; padding: 2px 6px; border-radius: 4px;">` + ex + `</span>
                         </div>
                     `;
                 }});
@@ -246,14 +247,13 @@ input.addEventListener('input', function() {{
         }} catch(e) {{
             dropdown.style.display = 'none';
         }}
-    }}, 200); // 0.2초 타핑 대기 후 즉시 검색
+    }}, 200);
 }});
 
 function selectStock(sym) {{
-    window.parent.location.search = `?q=${{sym}}&tf={current_tf}`;
+    window.parent.location.search = '?q=' + sym + '&tf=' + currentTf;
 }}
 
-// 바깥 클릭 시 닫기
 document.addEventListener('click', function(e) {{
     if (!e.target.closest('.search-container')) {{
         dropdown.style.display = 'none';
