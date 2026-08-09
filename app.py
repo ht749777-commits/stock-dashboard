@@ -19,7 +19,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# 🎨 다크 테마 및 토스 스타일 CSS 커스텀
+# 🎨 다크 테마 및 토스 스타일 입력창 CSS 커스텀
 st.markdown("""
     <style>
     .stApp { background-color: #0B0E14 !important; color: #E0E0E0 !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
@@ -104,7 +104,7 @@ class QuantEngine:
         "short squeeze": "숏 스퀴즈", "short interest": "공매도 잔고", "earnings": "실적 발표",
         "guidance": "가이던스", "rally": "랠리", "plummet": "폭락", "surge": "급등",
         "soar": "폭등", "dip": "조정", "buy the dip": "저가 매수", "market cap": "시가총액",
-        "Advanced Auto Parts": "어드밴스드 오토 파츠", "Inc": "INC", "Corporation": "CORP"
+        "Inc": "INC", "Corporation": "CORP", "Company": "컴퍼니", "Group": "그룹"
     }
 
     @staticmethod
@@ -320,7 +320,7 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# 🔍 토스증권 스타일 통합형 드롭다운 검색창 구현
+# 🔍 토스증권 스타일 통합형 드롭다운 검색창 구현 (HTML 컴포넌트 조합)
 col_search, col_dummy = st.columns([2.0, 3.0])
 with col_search:
     search_input = st.text_input("티커 검색", value=st.session_state['selected_ticker'], placeholder="예: AAPL, TSLA, ASTS...")
@@ -328,27 +328,34 @@ with col_search:
     if search_input and len(search_input.strip()) > 0:
         suggestions = QuantEngine.search_stock_suggestions(search_input)
         if suggestions:
-            # HTML/CSS 기반의 완벽한 일체형 드롭다운 박스
-            dropdown_html = f"""
-            <div style="background-color: #121824; border: 1px solid #1E293B; border-radius: 10px; padding: 6px; margin-top: -10px; margin-bottom: 15px; box-shadow: 0 8px 16px rgba(0,0,0,0.4);">
-            """
-            st.markdown(dropdown_html, unsafe_allow_html=True)
-            
+            dropdown_items_html = ""
             for item in suggestions:
                 sym = item["symbol"]
                 name = item["name"]
                 ex = item["exchange"]
                 
-                # 검색어 글자 강조 처리
+                # 검색어 글자만 초록색으로 강조 처리
                 pattern = re.compile(re.escape(search_input.strip()), re.IGNORECASE)
                 highlighted_sym = pattern.sub(lambda m: f"<span style='color: #00E676; font-weight: 900;'>{m.group(0)}</span>", sym)
                 
-                if st.button(f"{sym}  |  {name} ({ex})", key=f"sugg_{sym}", use_container_width=True):
-                    st.session_state['selected_ticker'] = sym
-                    st.query_params["q"] = sym
-                    st.rerun()
-                    
-            st.markdown("</div>", unsafe_allow_html=True)
+                dropdown_items_html += f"""
+                <div onclick="window.parent.location.search = '?q={sym}&tf={st.session_state['timeframe']}'" 
+                     style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #1E293B; display: flex; justify-content: space-between; align-items: center;"
+                     onmouseover="this.style.backgroundColor='#1E293B'" onmouseout="this.style.backgroundColor='#121824'">
+                    <div>
+                        <span style="font-size: 14px; font-weight: 700; color: #F8FAFC;">{highlighted_sym}</span>
+                        <span style="font-size: 13px; color: #94A3B8; margin-left: 8px;">{name}</span>
+                    </div>
+                    <span style="font-size: 11px; color: #64748B; background: #0B0E14; padding: 2px 6px; border-radius: 4px;">{ex}</span>
+                </div>
+                """
+            
+            dropdown_container = f"""
+            <div style="background-color: #121824; border: 1px solid #1E293B; border-radius: 0 0 10px 10px; margin-top: -10px; margin-bottom: 15px; box-shadow: 0 12px 24px rgba(0,0,0,0.5); overflow: hidden; position: relative; z-index: 999;">
+                {dropdown_items_html}
+            </div>
+            """
+            components.html(dropdown_container, height=min(len(suggestions) * 45 + 10, 250))
 
 res = QuantEngine.fetch_market_data(st.session_state['selected_ticker'], st.session_state['timeframe'])
 
