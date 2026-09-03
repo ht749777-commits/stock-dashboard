@@ -1,70 +1,70 @@
 {
     "SPCX": {
-        "price": NaN,
+        "price": 140.7100067138672,
         "date": "2026-09-02"
     },
     "ASTS": {
-        "price": NaN,
+        "price": 62.400001525878906,
         "date": "2026-09-02"
     },
     "NVDA": {
-        "price": NaN,
+        "price": 224.41000366210938,
         "date": "2026-09-02"
     },
     "TSLA": {
-        "price": NaN,
+        "price": 357.010009765625,
         "date": "2026-09-02"
     },
     "PLTR": {
-        "price": NaN,
+        "price": 169.4600067138672,
         "date": "2026-09-02"
     },
     "AMD": {
-        "price": NaN,
+        "price": 457.05999755859375,
         "date": "2026-09-02"
     },
     "AAPL": {
-        "price": NaN,
+        "price": 324.9599914550781,
         "date": "2026-09-02"
     },
     "MSFT": {
-        "price": NaN,
+        "price": 496.82000732421875,
         "date": "2026-09-02"
     },
     "AMZN": {
-        "price": NaN,
+        "price": 254.97999572753906,
         "date": "2026-09-02"
     },
     "GOOGL": {
-        "price": NaN,
+        "price": 337.1199951171875,
         "date": "2026-09-02"
     },
     "META": {
-        "price": NaN,
+        "price": 592.8499755859375,
         "date": "2026-09-02"
     },
     "AVGO": {
-        "price": NaN,
+        "price": 367.239990234375,
         "date": "2026-09-02"
     },
     "SMCI": {
-        "price": NaN,
+        "price": 37.0,
         "date": "2026-09-02"
     },
     "COIN": {
-        "price": NaN,
+        "price": 174.9600067138672,
         "date": "2026-09-02"
     },
     "MSTR": {
-        "price": NaN,
+        "price": 123.19000244140625,
         "date": "2026-09-02"
     },
     "IONQ": {
-        "price": NaN,
+        "price": 37.63999938964844,
         "date": "2026-09-02"
     },
     "RKLB": {
-        "price": NaN,
+        "price": 63.099998474121094,
         "date": "2026-09-02"
     }
 }
